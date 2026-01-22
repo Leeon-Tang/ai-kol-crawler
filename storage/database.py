@@ -206,22 +206,44 @@ class Database:
     
     def fetchone(self, query, params=None):
         """查询单条记录"""
-        if params:
-            self.cursor.execute(query, params)
+        # 为每次查询创建新游标，避免递归使用
+        if self.use_sqlite:
+            cursor = self.conn.cursor()
         else:
-            self.cursor.execute(query)
-        result = self.cursor.fetchone()
+            cursor = self.cursor
+            
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+        result = cursor.fetchone()
+        
+        # SQLite 需要关闭游标
+        if self.use_sqlite:
+            cursor.close()
+            
         if result and self.use_sqlite:
             return dict(result)
         return result
     
     def fetchall(self, query, params=None):
         """查询多条记录"""
-        if params:
-            self.cursor.execute(query, params)
+        # 为每次查询创建新游标，避免递归使用
+        if self.use_sqlite:
+            cursor = self.conn.cursor()
         else:
-            self.cursor.execute(query)
-        results = self.cursor.fetchall()
+            cursor = self.cursor
+            
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+        results = cursor.fetchall()
+        
+        # SQLite 需要关闭游标
+        if self.use_sqlite:
+            cursor.close()
+            
         if results and self.use_sqlite:
             return [dict(row) for row in results]
         return results
