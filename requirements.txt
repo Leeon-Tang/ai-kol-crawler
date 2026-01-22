@@ -1,0 +1,9 @@
+# 核心依赖
+yt-dlp>=2024.1.0
+openpyxl>=3.1.2
+streamlit>=1.30.0
+pandas>=2.0.0
+
+# 可选依赖 - PostgreSQL支持（默认使用SQLite，无需此包）
+# 如需使用PostgreSQL，请取消下行注释并安装
+# psycopg2-binary>=2.9.9
