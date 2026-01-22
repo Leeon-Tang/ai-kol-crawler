@@ -69,6 +69,23 @@ chmod +x autostart-mac-linux.sh
 
 ## 📖 使用说明
 
+### 首次配置
+
+1. 复制配置文件模板：
+   ```bash
+   # Windows
+   copy config\config.example.json config\config.json
+   
+   # Mac/Linux
+   cp config/config.example.json config/config.json
+   ```
+
+2. 编辑 `config/config.json`，根据需要修改配置（可选）
+
+**注意：** `config.json` 不会被上传到Git，你的自定义配置是安全的！
+
+---
+
 ### 启动后
 
 浏览器会自动打开 `http://localhost:8501`

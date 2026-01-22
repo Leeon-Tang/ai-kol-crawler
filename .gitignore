@@ -29,16 +29,6 @@ python-portable/
 # 环境变量
 .env
 
-# 日志
-logs/
-*.log
-
-# 导出文件
-exports/
-
-# 备份文件
-backups/
-
 # IDE
 .vscode/
 .idea/
