@@ -893,7 +893,7 @@ def render_ai_rules():
             height=200,
             help="输入主流、常用的AI工具和术语"
         )
-        st.caption(f"✓ 当前数量: {len([k for k in medium_keywords.split('\n') if k.strip()])} 个")
+        st.caption(f"✓ 当前数量: {len([k for k in medium_keywords.split(newline) if k.strip()])} 个")
     
     with tab3:
         st.caption("💡 技术术语和专业词汇（如：LLM, Diffusion Model, AI workflow等）")
@@ -903,7 +903,7 @@ def render_ai_rules():
             height=200,
             help="输入技术性较强的专业术语"
         )
-        st.caption(f"✓ 当前数量: {len([k for k in low_keywords.split('\n') if k.strip()])} 个")
+        st.caption(f"✓ 当前数量: {len([k for k in low_keywords.split(newline) if k.strip()])} 个")
     
     st.divider()
     
@@ -931,7 +931,7 @@ def render_ai_rules():
         help="输入任何你想排除的关键词，如：课程、大学、新闻、tutorial、university等"
     )
     
-    keyword_count = len([k for k in exclusion_keywords.split('\n') if k.strip()])
+    keyword_count = len([k for k in exclusion_keywords.split(newline) if k.strip()])
     st.caption(f"✓ 当前共 {keyword_count} 个排除关键词")
     
     # 显示一些常用示例
@@ -958,12 +958,12 @@ def render_ai_rules():
             config['crawler']['sample_video_count'] = sample_video_count
             config['crawler']['active_days_threshold'] = active_days_threshold
             
-            config['keywords']['priority_high'] = [k.strip() for k in high_keywords.split('\n') if k.strip()]
-            config['keywords']['priority_medium'] = [k.strip() for k in medium_keywords.split('\n') if k.strip()]
-            config['keywords']['priority_low'] = [k.strip() for k in low_keywords.split('\n') if k.strip()]
+            config['keywords']['priority_high'] = [k.strip() for k in high_keywords.split(newline) if k.strip()]
+            config['keywords']['priority_medium'] = [k.strip() for k in medium_keywords.split(newline) if k.strip()]
+            config['keywords']['priority_low'] = [k.strip() for k in low_keywords.split(newline) if k.strip()]
             
             # 保存统一的排除关键词列表（为了兼容性，仍然保存到三个分类中，但实际使用时会合并）
-            exclusion_list = [k.strip() for k in exclusion_keywords.split('\n') if k.strip()]
+            exclusion_list = [k.strip() for k in exclusion_keywords.split(newline) if k.strip()]
             config['exclusion_rules']['course_keywords'] = exclusion_list
             config['exclusion_rules']['academic_keywords'] = []
             config['exclusion_rules']['news_keywords'] = []
@@ -994,14 +994,14 @@ def render_ai_rules():
         st.metric("分析视频数", f"{sample_video_count} 个")
     
     with summary_col2:
-        total_keywords = len([k for k in high_keywords.split('\n') if k.strip()]) + \
-                        len([k for k in medium_keywords.split('\n') if k.strip()]) + \
-                        len([k for k in low_keywords.split('\n') if k.strip()])
+        total_keywords = len([k for k in high_keywords.split(newline) if k.strip()]) + \
+                        len([k for k in medium_keywords.split(newline) if k.strip()]) + \
+                        len([k for k in low_keywords.split(newline) if k.strip()])
         st.metric("总关键词数", f"{total_keywords} 个")
         st.metric("活跃度阈值", f"{active_days_threshold} 天")
     
     with summary_col3:
-        total_exclusions = len([k for k in exclusion_keywords.split('\n') if k.strip()])
+        total_exclusions = len([k for k in exclusion_keywords.split(newline) if k.strip()])
         st.metric("排除规则数", f"{total_exclusions} 个")
 
 
