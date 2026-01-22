@@ -814,8 +814,26 @@ def render_ai_rules():
     st.info("💡 配置AI内容识别规则，调整关键词和筛选条件")
     
     # 读取配置
-    with open('config/config.json', 'r', encoding='utf-8') as f:
-        config = json.load(f)
+    config_path = os.path.join(PROJECT_ROOT, 'config', 'config.json')
+    config_example_path = os.path.join(PROJECT_ROOT, 'config', 'config.example.json')
+    
+    # 如果配置文件不存在，从示例创建
+    if not os.path.exists(config_path):
+        if os.path.exists(config_example_path):
+            import shutil
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            shutil.copy(config_example_path, config_path)
+            st.success("✅ 已自动创建配置文件")
+        else:
+            st.error("❌ 配置文件不存在，且未找到示例文件 config/config.example.json")
+            return
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+    except Exception as e:
+        st.error(f"❌ 读取配置文件失败: {e}")
+        return
     
     # 基础参数配置
     st.subheader("📊 基础筛选参数")
@@ -970,7 +988,9 @@ def render_ai_rules():
             
             # 保存到文件
             try:
-                with open('config/config.json', 'w', encoding='utf-8') as f:
+                config_path = os.path.join(PROJECT_ROOT, 'config', 'config.json')
+                os.makedirs(os.path.dirname(config_path), exist_ok=True)
+                with open(config_path, 'w', encoding='utf-8') as f:
                     json.dump(config, f, indent=2, ensure_ascii=False)
                 st.success("✅ 配置已保存！新配置将在下次爬虫任务时生效")
                 add_log("AI规则配置已更新", "INFO")
@@ -1014,8 +1034,26 @@ def render_settings():
     
     st.info("💡 当前使用SQLite数据库，数据保存在 data/ai_kol_crawler.db")
     
-    with open('config/config.json', 'r', encoding='utf-8') as f:
-        config = json.load(f)
+    config_path = os.path.join(PROJECT_ROOT, 'config', 'config.json')
+    config_example_path = os.path.join(PROJECT_ROOT, 'config', 'config.example.json')
+    
+    # 如果配置文件不存在，从示例创建
+    if not os.path.exists(config_path):
+        if os.path.exists(config_example_path):
+            import shutil
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            shutil.copy(config_example_path, config_path)
+            st.success("✅ 已自动创建配置文件")
+        else:
+            st.error("❌ 配置文件不存在，且未找到示例文件 config/config.example.json")
+            return
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+    except Exception as e:
+        st.error(f"❌ 读取配置文件失败: {e}")
+        return
     
     col1, col2 = st.columns(2)
     

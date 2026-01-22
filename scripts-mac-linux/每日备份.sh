@@ -9,6 +9,17 @@ echo "  每日数据备份"
 echo "========================================"
 echo ""
 
+# 检查并创建配置文件（如果不存在）
+if [ ! -f "config/config.json" ]; then
+    if [ -f "config/config.example.json" ]; then
+        echo "正在创建配置文件..."
+        mkdir -p config
+        cp "config/config.example.json" "config/config.json"
+        echo "[OK] 配置文件已创建"
+        echo ""
+    fi
+fi
+
 # 检查Python
 if [ -f "venv/bin/python" ]; then
     PYTHON_EXE="venv/bin/python"

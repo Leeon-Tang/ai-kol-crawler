@@ -142,7 +142,7 @@ if errorlevel 1 (
 echo.
 
 REM ============================================
-REM Step 4: Initialize directories
+REM Step 4: Initialize directories and config
 REM ============================================
 echo [步骤 4/5] 初始化系统...
 echo.
@@ -150,8 +150,24 @@ echo.
 if not exist "data" mkdir data
 if not exist "logs" mkdir logs
 if not exist "exports" mkdir exports
+if not exist "config" mkdir config
 
-echo [OK] 目录准备完成
+REM 检查并创建配置文件
+if not exist "config\config.json" (
+    if exist "config\config.example.json" (
+        echo 正在创建配置文件...
+        copy "config\config.example.json" "config\config.json" >nul
+        echo [OK] 配置文件已从示例创建
+    ) else (
+        echo [错误] 未找到配置示例文件 config\config.example.json
+        pause
+        exit /b 1
+    )
+) else (
+    echo [OK] 配置文件已存在
+)
+
+echo [OK] 系统初始化完成
 echo.
 
 REM ============================================

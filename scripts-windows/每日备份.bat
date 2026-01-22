@@ -9,6 +9,17 @@ echo   每日数据备份
 echo ========================================
 echo.
 
+REM 检查并创建配置文件（如果不存在）
+if not exist "config\config.json" (
+    if exist "config\config.example.json" (
+        echo 正在创建配置文件...
+        if not exist "config" mkdir config
+        copy "config\config.example.json" "config\config.json" >nul
+        echo [OK] 配置文件已创建
+        echo.
+    )
+)
+
 REM 检查虚拟环境
 if exist "venv\Scripts\python.exe" (
     set PYTHON_EXE=venv\Scripts\python.exe

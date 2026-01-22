@@ -86,7 +86,7 @@ fi
 echo ""
 
 # ============================================
-# Step 4: Initialize directories
+# Step 4: Initialize directories and config
 # ============================================
 echo "[步骤 4/5] 初始化系统..."
 echo ""
@@ -94,8 +94,23 @@ echo ""
 mkdir -p "$SCRIPT_DIR/data"
 mkdir -p "$SCRIPT_DIR/logs"
 mkdir -p "$SCRIPT_DIR/exports"
+mkdir -p "$SCRIPT_DIR/config"
 
-echo "[OK] 目录准备完成"
+# 检查并创建配置文件
+if [ ! -f "$SCRIPT_DIR/config/config.json" ]; then
+    if [ -f "$SCRIPT_DIR/config/config.example.json" ]; then
+        echo "正在创建配置文件..."
+        cp "$SCRIPT_DIR/config/config.example.json" "$SCRIPT_DIR/config/config.json"
+        echo "[OK] 配置文件已从示例创建"
+    else
+        echo "[错误] 未找到配置示例文件 config/config.example.json"
+        exit 1
+    fi
+else
+    echo "[OK] 配置文件已存在"
+fi
+
+echo "[OK] 系统初始化完成"
 echo ""
 
 # ============================================
