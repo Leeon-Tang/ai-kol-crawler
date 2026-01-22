@@ -4,11 +4,13 @@
 import time
 import json
 from functools import wraps
+from utils.config_loader import get_absolute_path
 
 
 def load_retry_config():
     """加载重试配置"""
-    with open('config/config.json', 'r', encoding='utf-8') as f:
+    config_path = get_absolute_path('config/config.json')
+    with open(config_path, 'r', encoding='utf-8') as f:
         config = json.load(f)
     return config['crawler']['max_retries']
 

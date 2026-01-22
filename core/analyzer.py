@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from utils.text_matcher import TextMatcher
 from utils.exclusion_rules import ExclusionRules
 from utils.logger import setup_logger
+from utils.config_loader import get_absolute_path
 
 
 logger = setup_logger()
@@ -19,6 +20,7 @@ class KOLAnalyzer:
         self.text_matcher = TextMatcher(config_path)
         self.exclusion_rules = ExclusionRules(config_path)
         
+        config_path = get_absolute_path(config_path)
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         

@@ -3,6 +3,7 @@
 """
 import json
 from utils.logger import setup_logger
+from utils.config_loader import get_absolute_path
 
 
 logger = setup_logger()
@@ -14,6 +15,7 @@ class KOLExpander:
     def __init__(self, scraper, config_path='config/config.json'):
         self.scraper = scraper
         
+        config_path = get_absolute_path(config_path)
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         

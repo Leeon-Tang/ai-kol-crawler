@@ -3,12 +3,15 @@
 """
 import json
 import os
+from utils.config_loader import get_absolute_path, get_project_root
 
 
 class Database:
     """数据库管理类"""
     
     def __init__(self, config_path='config/config.json', use_sqlite=True):
+        config_path = get_absolute_path(config_path)
+        
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         
@@ -16,14 +19,16 @@ class Database:
         self.db_config = config.get('database', {})
         self.conn = None
         self.cursor = None
+        self.project_root = get_project_root()
     
     def connect(self):
         """建立数据库连接"""
         if self.use_sqlite:
-            # 使用SQLite
+            # 使用SQLite - 使用绝对路径
             import sqlite3
-            db_path = 'data/ai_kol_crawler.db'
-            os.makedirs('data', exist_ok=True)
+            db_dir = os.path.join(self.project_root, 'data')
+            os.makedirs(db_dir, exist_ok=True)
+            db_path = os.path.join(db_dir, 'ai_kol_crawler.db')
             self.conn = sqlite3.connect(db_path, check_same_thread=False)
             self.conn.row_factory = sqlite3.Row
             self.cursor = self.conn.cursor()
