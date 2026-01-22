@@ -882,7 +882,8 @@ def render_ai_rules():
             height=200,
             help="输入最新、最热门的AI工具名称"
         )
-        st.caption(f"✓ 当前数量: {len([k for k in high_keywords.split('\n') if k.strip()])} 个")
+        newline = '\n'
+        st.caption(f"✓ 当前数量: {len([k for k in high_keywords.split(newline) if k.strip()])} 个")
     
     with tab2:
         st.caption("💡 主流AI工具和常见术语（如：ChatGPT, Midjourney, Claude等）")
