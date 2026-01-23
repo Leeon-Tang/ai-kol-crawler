@@ -21,6 +21,11 @@ class UpdateTask:
             config = json.load(f)
         
         self.update_video_count = config['crawler']['update_recent_videos']
+        
+        # 互动率权重配置
+        engagement_config = config.get('engagement', {})
+        self.like_weight = engagement_config.get('like_weight', 0.4)
+        self.comment_weight = engagement_config.get('comment_weight', 0.6)
     
     def run(self):
         """
@@ -60,6 +65,7 @@ class UpdateTask:
                 ai_videos = 0
                 total_views = 0
                 total_likes = 0
+                total_comments = 0
                 last_video_date = None
                 
                 for video in videos:
@@ -77,6 +83,7 @@ class UpdateTask:
                         video_info = self.scraper.get_video_info(video_id)
                         total_views += video_info['views']
                         total_likes += video_info['likes']
+                        total_comments += video_info['comments']
                         
                         if last_video_date is None or video_info['published_at'] > last_video_date:
                             last_video_date = video_info['published_at']
@@ -90,7 +97,13 @@ class UpdateTask:
                 new_ai_ratio = ai_videos / analyzed_videos if analyzed_videos > 0 else 0
                 new_avg_views = total_views // analyzed_videos if analyzed_videos > 0 else 0
                 new_avg_likes = total_likes // analyzed_videos if analyzed_videos > 0 else 0
-                new_engagement_rate = total_likes / total_views if total_views > 0 else 0
+                new_avg_comments = total_comments // analyzed_videos if analyzed_videos > 0 else 0
+                
+                # 新的互动率计算公式: (平均点赞*like_weight + 平均评论*comment_weight) / 平均观看数
+                if new_avg_views > 0:
+                    new_engagement_rate = (new_avg_likes * self.like_weight + new_avg_comments * self.comment_weight) / new_avg_views
+                else:
+                    new_engagement_rate = 0
                 
                 days_since_last_video = None
                 if last_video_date:
@@ -100,6 +113,7 @@ class UpdateTask:
                 update_data = {
                     'avg_views': new_avg_views,
                     'avg_likes': new_avg_likes,
+                    'avg_comments': new_avg_comments,
                     'engagement_rate': round(new_engagement_rate, 4),
                     'last_video_date': last_video_date,
                     'days_since_last_video': days_since_last_video,

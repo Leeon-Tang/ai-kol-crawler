@@ -110,6 +110,16 @@ else
     echo "[OK] 配置文件已存在"
 fi
 
+# 检查并执行数据库迁移
+echo "检查数据库迁移..."
+python -c "from storage.migrate import run_migration; import sys; sys.exit(0 if run_migration() else 1)" 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "[警告] 数据库迁移检查失败，但系统将继续运行"
+else
+    echo "[OK] 数据库检查完成"
+fi
+echo ""
+
 echo "[OK] 系统初始化完成"
 echo ""
 

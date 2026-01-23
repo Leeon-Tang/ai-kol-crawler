@@ -89,6 +89,7 @@ class YouTubeScraper:
                             'subscribers': info.get('channel_follower_count', 0),
                             'total_videos': info.get('playlist_count', 0),
                             'total_views': info.get('view_count', 0),
+                            'description': info.get('description', ''),  # 添加频道描述
                         }
                         
                         logger.info(f"  获取频道信息成功: {channel_data['channel_name']}")
@@ -106,6 +107,7 @@ class YouTubeScraper:
             'subscribers': 0,
             'total_videos': 0,
             'total_views': 0,
+            'description': '',
         }
     
     @retry_on_failure()

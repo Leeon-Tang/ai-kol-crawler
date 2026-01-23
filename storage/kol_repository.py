@@ -20,17 +20,17 @@ class KOLRepository:
             query = f"""
                 INSERT OR IGNORE INTO kols (
                     channel_id, channel_name, channel_url, subscribers, total_videos, total_views,
-                    analyzed_videos, ai_videos, ai_ratio, avg_views, avg_likes, engagement_rate,
-                    last_video_date, days_since_last_video, status, discovered_from
-                ) VALUES ({','.join(['?']*16)})
+                    analyzed_videos, ai_videos, ai_ratio, avg_views, avg_likes, avg_comments, engagement_rate,
+                    last_video_date, days_since_last_video, contact_info, status, discovered_from
+                ) VALUES ({','.join(['?']*18)})
             """
         else:
             query = f"""
                 INSERT INTO kols (
                     channel_id, channel_name, channel_url, subscribers, total_videos, total_views,
-                    analyzed_videos, ai_videos, ai_ratio, avg_views, avg_likes, engagement_rate,
-                    last_video_date, days_since_last_video, status, discovered_from
-                ) VALUES ({','.join(['%s']*16)})
+                    analyzed_videos, ai_videos, ai_ratio, avg_views, avg_likes, avg_comments, engagement_rate,
+                    last_video_date, days_since_last_video, contact_info, status, discovered_from
+                ) VALUES ({','.join(['%s']*18)})
                 ON CONFLICT (channel_id) DO NOTHING
                 RETURNING id
             """
@@ -39,9 +39,9 @@ class KOLRepository:
             kol_data['channel_id'], kol_data['channel_name'], kol_data['channel_url'],
             kol_data['subscribers'], kol_data['total_videos'], kol_data['total_views'],
             kol_data['analyzed_videos'], kol_data['ai_videos'], kol_data['ai_ratio'],
-            kol_data['avg_views'], kol_data['avg_likes'], kol_data['engagement_rate'],
+            kol_data['avg_views'], kol_data['avg_likes'], kol_data.get('avg_comments', 0), kol_data['engagement_rate'],
             kol_data.get('last_video_date'), kol_data.get('days_since_last_video'),
-            kol_data['status'], kol_data['discovered_from']
+            kol_data.get('contact_info'), kol_data['status'], kol_data['discovered_from']
         )
         
         if self.use_sqlite:

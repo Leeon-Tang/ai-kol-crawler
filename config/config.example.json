@@ -18,6 +18,10 @@
     "max_retries": 3,
     "active_days_threshold": 90
   },
+  "engagement": {
+    "like_weight": 0.4,
+    "comment_weight": 0.6
+  },
   "keywords": {
     "priority_high": [
       "Sora AI",
@@ -111,6 +115,40 @@
       "報導"
     ],
     "academic_keywords": [],
-    "news_keywords": []
+    "news_keywords": [],
+    "competitor_names": [
+      "replicate",
+      "fal",
+      "runway",
+      "fireworks",
+      "runway",
+      "higgsfield",
+      "pollo",
+      "爱诗科技",
+      "硅基流动",
+      "vidu",
+      "阿里",
+      "字节",
+      "快手",
+      "google",
+      "freepik",
+      "black forest lab",
+      "openart",
+      "civitai",
+      "comfy ui",
+      "elevenlabs",
+      "LTX studio",
+      "Tencent",
+      "Byteplus",
+      "Midjourney",
+      "pruna",
+      "pikalabs",
+      "prodia",
+      "together.ai",
+      "seaart",
+      "Lovart",
+      "VEED.IO",
+      "KREA AI"
+    ]
   }
 }

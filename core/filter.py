@@ -20,6 +20,26 @@ class KOLFilter:
             config = json.load(f)
         
         self.threshold = config['crawler']['ai_ratio_threshold']
+        self.competitor_names = config.get('exclusion_rules', {}).get('competitor_names', [])
+        # 转换为小写以便不区分大小写匹配
+        self.competitor_names_lower = [name.lower() for name in self.competitor_names]
+    
+    def is_competitor(self, channel_name):
+        """
+        检查频道名称是否为竞对
+        返回: True表示是竞对，应该排除
+        """
+        if not channel_name:
+            return False
+        
+        channel_name_lower = channel_name.lower()
+        
+        for competitor in self.competitor_names_lower:
+            if competitor in channel_name_lower:
+                logger.info(f"排除竞对频道: {channel_name}")
+                return True
+        
+        return False
     
     def filter_by_ratio(self, kol_data):
         """按AI内容占比过滤"""

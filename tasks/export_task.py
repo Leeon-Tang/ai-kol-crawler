@@ -54,11 +54,13 @@ class ExportTask:
             "AI内容占比",
             "平均观看数",
             "平均点赞数",
+            "平均评论数",
             "互动率",
             "总视频数",
             "最后视频日期",
             "距今天数",
-            "发现时间",
+            "联系方式",
+            "爬取时间",
             "发现来源"
         ]
         
@@ -78,33 +80,39 @@ class ExportTask:
             ws.cell(row=row, column=4, value=f"{kol['ai_ratio']:.1%}")
             ws.cell(row=row, column=5, value=kol['avg_views'])
             ws.cell(row=row, column=6, value=kol['avg_likes'])
-            ws.cell(row=row, column=7, value=f"{kol['engagement_rate']:.2%}")
-            ws.cell(row=row, column=8, value=kol['total_videos'])
+            ws.cell(row=row, column=7, value=kol.get('avg_comments', 0))
+            ws.cell(row=row, column=8, value=f"{kol['engagement_rate']:.2%}")
+            ws.cell(row=row, column=9, value=kol['total_videos'])
             
             # 最后视频日期 - 处理字符串和datetime对象
-            if kol['last_video_date']:
+            if kol.get('last_video_date'):
                 if isinstance(kol['last_video_date'], str):
-                    ws.cell(row=row, column=9, value=kol['last_video_date'][:10])  # 取前10个字符 YYYY-MM-DD
+                    # 处理ISO格式时间戳
+                    date_str = kol['last_video_date'].split('T')[0] if 'T' in kol['last_video_date'] else kol['last_video_date'][:10]
+                    ws.cell(row=row, column=10, value=date_str)
                 else:
-                    ws.cell(row=row, column=9, value=kol['last_video_date'].strftime('%Y-%m-%d'))
+                    ws.cell(row=row, column=10, value=kol['last_video_date'].strftime('%Y-%m-%d'))
             else:
-                ws.cell(row=row, column=9, value="未知")
+                ws.cell(row=row, column=10, value="未知")
             
-            ws.cell(row=row, column=10, value=kol['days_since_last_video'] or "未知")
+            ws.cell(row=row, column=11, value=kol.get('days_since_last_video') or "未知")
+            ws.cell(row=row, column=12, value=kol.get('contact_info') or "")
             
-            # 发现时间 - 处理字符串和datetime对象
-            if kol['discovered_at']:
+            # 爬取时间 - 处理字符串和datetime对象
+            if kol.get('discovered_at'):
                 if isinstance(kol['discovered_at'], str):
-                    ws.cell(row=row, column=11, value=kol['discovered_at'][:10])
+                    # 处理ISO格式时间戳
+                    date_str = kol['discovered_at'].split('T')[0] if 'T' in kol['discovered_at'] else kol['discovered_at'][:10]
+                    ws.cell(row=row, column=13, value=date_str)
                 else:
-                    ws.cell(row=row, column=11, value=kol['discovered_at'].strftime('%Y-%m-%d'))
+                    ws.cell(row=row, column=13, value=kol['discovered_at'].strftime('%Y-%m-%d'))
             else:
-                ws.cell(row=row, column=11, value="未知")
+                ws.cell(row=row, column=13, value="未知")
             
-            ws.cell(row=row, column=12, value=kol['discovered_from'])
+            ws.cell(row=row, column=14, value=kol.get('discovered_from', ''))
         
         # 调整列宽
-        column_widths = [30, 50, 12, 15, 15, 15, 12, 12, 15, 12, 15, 20]
+        column_widths = [30, 50, 12, 15, 15, 15, 15, 12, 12, 15, 12, 30, 15, 20]
         for col, width in enumerate(column_widths, 1):
             ws.column_dimensions[chr(64 + col)].width = width
         

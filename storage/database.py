@@ -73,11 +73,13 @@ class Database:
                     
                     avg_views INTEGER DEFAULT 0,
                     avg_likes INTEGER DEFAULT 0,
+                    avg_comments INTEGER DEFAULT 0,
                     engagement_rate REAL DEFAULT 0,
                     
                     last_video_date TEXT,
                     days_since_last_video INTEGER,
                     
+                    contact_info TEXT,
                     status TEXT DEFAULT 'pending',
                     discovered_from TEXT,
                     discovered_at TEXT DEFAULT (datetime('now')),
@@ -143,11 +145,13 @@ class Database:
                     
                     avg_views INTEGER DEFAULT 0,
                     avg_likes INTEGER DEFAULT 0,
+                    avg_comments INTEGER DEFAULT 0,
                     engagement_rate FLOAT DEFAULT 0,
                     
                     last_video_date TIMESTAMP,
                     days_since_last_video INTEGER,
                     
+                    contact_info TEXT,
                     status VARCHAR(50) DEFAULT 'pending',
                     discovered_from TEXT,
                     discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

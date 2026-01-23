@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta
 from utils.text_matcher import TextMatcher
 from utils.exclusion_rules import ExclusionRules
+from utils.contact_extractor import ContactExtractor
 from utils.logger import setup_logger
 from utils.config_loader import get_absolute_path
 
@@ -19,6 +20,7 @@ class KOLAnalyzer:
         self.scraper = scraper
         self.text_matcher = TextMatcher(config_path)
         self.exclusion_rules = ExclusionRules(config_path)
+        self.contact_extractor = ContactExtractor()
         
         config_path = get_absolute_path(config_path)
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -26,6 +28,14 @@ class KOLAnalyzer:
         
         self.sample_size = config['crawler']['sample_video_count']
         self.active_days_threshold = config['crawler']['active_days_threshold']
+        
+        # 互动率权重配置
+        engagement_config = config.get('engagement', {})
+        self.like_weight = engagement_config.get('like_weight', 0.4)
+        self.comment_weight = engagement_config.get('comment_weight', 0.6)
+        
+        # 记录互动率计算方式
+        logger.info(f"互动率计算公式: (点赞×{self.like_weight} + 评论×{self.comment_weight}) / 观看数")
     
     def analyze_channel(self, channel_id, discovered_from='unknown'):
         """
@@ -39,7 +49,7 @@ class KOLAnalyzer:
         try:
             # 1. 获取频道基本信息
             logger.info(f"")
-            logger.info(f"▶ 阶段 1/3: 获取频道基本信息")
+            logger.info(f"▶ 阶段 1/4: 获取频道基本信息")
             logger.info(f"{'-'*70}")
             channel_info = self.scraper.get_channel_info(channel_id)
             logger.info(f"  频道名称: {channel_info['channel_name']}")
@@ -47,9 +57,19 @@ class KOLAnalyzer:
             logger.info(f"  视频数: {channel_info['total_videos']:,}")
             logger.info(f"  链接: {channel_info['channel_url']}")
             
-            # 2. 获取频道视频
+            # 2. 提取联系方式（从频道描述）
+            logger.info(f"  提取联系方式...")
+            channel_description = channel_info.get('description', '')
+            contact_info = self.contact_extractor.extract_all_contacts(channel_description)
+            
+            if contact_info:
+                logger.info(f"  ✓ 找到联系方式: {contact_info}")
+            else:
+                logger.info(f"  ✗ 未找到联系方式")
+            
+            # 3. 获取频道视频
             logger.info(f"")
-            logger.info(f"▶ 阶段 2/3: 获取视频列表 (最多{self.sample_size}个)")
+            logger.info(f"▶ 阶段 2/4: 获取视频列表 (最多{self.sample_size}个)")
             logger.info(f"{'-'*70}")
             videos = self.scraper.get_channel_videos(channel_id, limit=self.sample_size)
             
@@ -59,13 +79,14 @@ class KOLAnalyzer:
             
             logger.info(f"  成功获取 {len(videos)} 个视频")
             
-            # 3. 分析每个视频
+            # 4. 分析每个视频
             logger.info(f"")
-            logger.info(f"▶ 阶段 3/3: 分析视频内容")
+            logger.info(f"▶ 阶段 3/4: 分析视频内容")
             logger.info(f"{'-'*70}")
             ai_videos = 0
             total_views = 0
             total_likes = 0
+            total_comments = 0
             video_data_list = []
             last_video_date = None
             failed_videos = 0
@@ -86,6 +107,7 @@ class KOLAnalyzer:
                     video_info = self.scraper.get_video_info(video_id)
                     total_views += (video_info['views'] or 0)
                     total_likes += (video_info['likes'] or 0)
+                    total_comments += (video_info['comments'] or 0)
                     
                     # 记录最新视频日期
                     if last_video_date is None or video_info['published_at'] > last_video_date:
@@ -132,7 +154,13 @@ class KOLAnalyzer:
             ai_ratio = ai_videos / analyzed_videos if analyzed_videos > 0 else 0
             avg_views = total_views // analyzed_videos if analyzed_videos > 0 else 0
             avg_likes = total_likes // analyzed_videos if analyzed_videos > 0 else 0
-            engagement_rate = total_likes / total_views if total_views > 0 else 0
+            avg_comments = total_comments // analyzed_videos if analyzed_videos > 0 else 0
+            
+            # 新的互动率计算公式: (平均点赞*like_weight + 平均评论*comment_weight) / 平均观看数
+            if avg_views > 0:
+                engagement_rate = (avg_likes * self.like_weight + avg_comments * self.comment_weight) / avg_views
+            else:
+                engagement_rate = 0
             
             # 计算距离最后视频的天数
             days_since_last_video = None
@@ -150,12 +178,14 @@ class KOLAnalyzer:
             # 6. 输出分析结果
             logger.info(f"")
             logger.info(f"{'='*70}")
-            logger.info(f"分析结果")
+            logger.info(f"▶ 阶段 4/4: 分析结果")
             logger.info(f"{'='*70}")
             logger.info(f"  频道: {channel_info['channel_name']}")
             logger.info(f"  分析视频: {analyzed_videos} | AI视频: {ai_videos} | AI占比: {ai_ratio:.1%}")
-            logger.info(f"  平均观看: {avg_views:,} | 平均点赞: {avg_likes:,} | 互动率: {engagement_rate:.2%}")
+            logger.info(f"  平均观看: {avg_views:,} | 平均点赞: {avg_likes:,} | 平均评论: {avg_comments:,} | 互动率: {engagement_rate:.2%}")
             logger.info(f"  最后更新: {days_since_last_video}天前 | 状态: {'✓ 合格' if status == 'qualified' else '✗ 不合格'} (阈值: 30%)")
+            if contact_info:
+                logger.info(f"  联系方式: {contact_info}")
             logger.info(f"{'='*70}")
             
             # 7. 组装结果
@@ -166,9 +196,11 @@ class KOLAnalyzer:
                 'ai_ratio': round(ai_ratio, 3),
                 'avg_views': avg_views,
                 'avg_likes': avg_likes,
+                'avg_comments': avg_comments,
                 'engagement_rate': round(engagement_rate, 4),
                 'last_video_date': last_video_date,
                 'days_since_last_video': days_since_last_video,
+                'contact_info': contact_info,
                 'status': status,
                 'discovered_from': discovered_from,
             }

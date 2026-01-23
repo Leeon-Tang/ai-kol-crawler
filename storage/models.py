@@ -36,10 +36,13 @@ class KOL:
         
         self.avg_views = 0
         self.avg_likes = 0
+        self.avg_comments = 0
         self.engagement_rate = 0.0
         
         self.last_video_date = None
         self.days_since_last_video = None
+        
+        self.contact_info = None
         
         self.status = KOLStatus.PENDING
         self.discovered_from = None

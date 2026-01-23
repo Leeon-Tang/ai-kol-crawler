@@ -26,6 +26,11 @@ class DiscoveryTask:
         logger.info("=" * 50)
         logger.info("开始执行发现任务")
         logger.info("=" * 50)
+        logger.info(f"配置信息:")
+        logger.info(f"  - 关键词数量: {keyword_limit}")
+        logger.info(f"  - AI占比阈值: {self.filter.threshold:.0%}")
+        logger.info(f"  - 互动率计算: (点赞×{self.analyzer.like_weight} + 评论×{self.analyzer.comment_weight}) / 观看数")
+        logger.info("=" * 50)
         
         # 检查是否已达上限
         if self.filter.should_stop_discovery():
@@ -54,6 +59,16 @@ class DiscoveryTask:
             logger.info(f"\n分析进度: [{i+1}/{len(new_channels)}]")
             
             try:
+                # 先获取频道基本信息，检查是否为竞对
+                from core.scraper import YouTubeScraper
+                temp_scraper = YouTubeScraper()
+                channel_info = temp_scraper.get_channel_info(channel_id)
+                
+                # 检查是否为竞对（提前过滤，节省资源）
+                if self.filter.is_competitor(channel_info['channel_name']):
+                    logger.info(f"✗ 跳过竞对频道: {channel_info['channel_name']}")
+                    continue
+                
                 # 分析频道
                 result = self.analyzer.analyze_channel(
                     channel_id, 

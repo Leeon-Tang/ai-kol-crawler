@@ -306,14 +306,15 @@ def render_dashboard():
             df = pd.DataFrame(recent_kols)
             display_df = df[[
                 'channel_name', 'subscribers', 'ai_ratio', 
-                'avg_views', 'engagement_rate', 'discovered_at'
+                'avg_views', 'avg_comments', 'engagement_rate', 'discovered_at'
             ]].copy()
             
-            display_df.columns = ['频道名称', '订阅数', 'AI占比', '平均观看', '互动率', '发现时间']
+            display_df.columns = ['频道名称', '订阅数', 'AI占比', '平均观看', '平均评论', '互动率', '爬取时间']
             display_df['AI占比'] = display_df['AI占比'].apply(lambda x: f"{x*100:.1f}%")
             display_df['互动率'] = display_df['互动率'].apply(lambda x: f"{x:.2f}%")
             display_df['订阅数'] = display_df['订阅数'].apply(lambda x: f"{x:,}")
             display_df['平均观看'] = display_df['平均观看'].apply(lambda x: f"{x:,}")
+            display_df['平均评论'] = display_df['平均评论'].apply(lambda x: f"{x:,}")
             
             st.dataframe(display_df, width='stretch', hide_index=True)
         else:
@@ -505,7 +506,7 @@ def render_data_browser():
     with col2:
         sort_by = st.selectbox(
             "排序方式",
-            ["AI占比", "订阅数", "平均观看", "发现时间"],
+            ["AI占比", "订阅数", "平均观看", "爬取时间"],
             index=0
         )
     
@@ -530,7 +531,7 @@ def render_data_browser():
         "AI占比": "ai_ratio DESC",
         "订阅数": "subscribers DESC",
         "平均观看": "avg_views DESC",
-        "发现时间": "discovered_at DESC"
+        "爬取时间": "discovered_at DESC"
     }
     
     # 查询数据
@@ -547,14 +548,14 @@ def render_data_browser():
         # 选择要显示的列
         display_columns = [
             'channel_name', 'channel_url', 'subscribers', 'total_videos', 'ai_ratio',
-            'avg_views', 'avg_likes', 'engagement_rate', 'status', 'discovered_at'
+            'avg_views', 'avg_likes', 'avg_comments', 'engagement_rate', 'contact_info', 'status', 'discovered_at'
         ]
         
         display_df = df[display_columns].copy()
         
         display_df.columns = [
             '频道名称', '频道链接', '订阅数', '总视频', 'AI占比',
-            '平均观看', '平均点赞', '互动率', '状态', '发现时间'
+            '平均观看', '平均点赞', '平均评论', '互动率', '联系方式', '状态', '爬取时间'
         ]
         
         # 格式化数据
@@ -564,6 +565,8 @@ def render_data_browser():
         display_df['订阅数'] = display_df['订阅数'].apply(lambda x: f"{x:,}")
         display_df['平均观看'] = display_df['平均观看'].apply(lambda x: f"{x:,}")
         display_df['平均点赞'] = display_df['平均点赞'].apply(lambda x: f"{x:,}")
+        display_df['平均评论'] = display_df['平均评论'].apply(lambda x: f"{x:,}")
+        display_df['联系方式'] = display_df['联系方式'].fillna('')
         
         # 格式化时间 - 将UTC时间转换为北京时间（UTC+8）
         def format_time(dt):
@@ -575,7 +578,7 @@ def render_data_browser():
             dt_beijing = dt + pd.Timedelta(hours=8)
             return dt_beijing.strftime('%Y-%m-%d %H:%M:%S')
         
-        display_df['发现时间'] = display_df['发现时间'].apply(format_time)
+        display_df['爬取时间'] = display_df['爬取时间'].apply(format_time)
         
         # 动态计算表格高度：每行约35px，加上表头50px
         table_height = min(max(len(display_df) * 35 + 50, 200), 800)

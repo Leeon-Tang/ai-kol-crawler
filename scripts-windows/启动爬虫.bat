@@ -167,6 +167,16 @@ if not exist "config\config.json" (
     echo [OK] 配置文件已存在
 )
 
+REM 检查并执行数据库迁移
+echo 检查数据库迁移...
+"%VENV_PYTHON%" -c "from storage.migrate import run_migration; import sys; sys.exit(0 if run_migration() else 1)" 2>nul
+if errorlevel 1 (
+    echo [警告] 数据库迁移检查失败，但系统将继续运行
+) else (
+    echo [OK] 数据库检查完成
+)
+echo.
+
 echo [OK] 系统初始化完成
 echo.
 
