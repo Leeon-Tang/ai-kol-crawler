@@ -12,7 +12,7 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 
-class ExportTask:
+class YouTubeExportTask:
     """导出任务"""
     
     def __init__(self, repository, config_path='config/config.json'):

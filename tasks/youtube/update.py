@@ -9,7 +9,7 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 
-class UpdateTask:
+class YouTubeUpdateTask:
     """更新任务"""
     
     def __init__(self, scraper, analyzer, repository, config_path='config/config.json'):

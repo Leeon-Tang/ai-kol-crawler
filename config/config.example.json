@@ -18,6 +18,40 @@
     "max_retries": 3,
     "active_days_threshold": 90
   },
+  "github": {
+    "search_keywords": [
+      "benchmark",
+      "latency",
+      "inference",
+      "openai compatible",
+      "router",
+      "vllm",
+      "tgi",
+      "deployment",
+      "llm serving",
+      "model optimization"
+    ],
+    "model_names": [
+      "llama",
+      "mistral",
+      "gpt",
+      "claude",
+      "gemini",
+      "stable-diffusion",
+      "whisper",
+      "bert"
+    ],
+    "topics": [
+      "machine-learning",
+      "artificial-intelligence",
+      "deep-learning",
+      "llm",
+      "generative-ai"
+    ],
+    "min_stars": 10,
+    "min_followers": 5,
+    "min_original_repos": 2
+  },
   "engagement": {
     "like_weight": 0.4,
     "comment_weight": 0.6

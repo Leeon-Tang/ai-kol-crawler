@@ -32,7 +32,7 @@ if exist "venv\Scripts\python.exe" (
 REM 执行备份
 echo 正在备份...
 echo.
-"%PYTHON_EXE%" backup_daily.py
+"%PYTHON_EXE%" scripts\backup_daily.py
 
 if errorlevel 1 (
     echo.

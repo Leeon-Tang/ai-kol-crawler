@@ -1,5 +1,5 @@
 """
-发现任务 - 关键词搜索发现KOL
+扩散任务 - 从已有KOL扩散发现新KOL
 """
 from utils.logger import setup_logger
 
@@ -7,46 +7,72 @@ from utils.logger import setup_logger
 logger = setup_logger()
 
 
-class DiscoveryTask:
-    """发现任务"""
+class YouTubeExpandTask:
+    """扩散任务"""
     
-    def __init__(self, searcher, analyzer, filter_module, repository):
-        self.searcher = searcher
+    def __init__(self, expander, analyzer, filter_module, repository):
+        self.expander = expander
         self.analyzer = analyzer
         self.filter = filter_module
         self.repository = repository
     
-    def run(self, keyword_limit=30):
+    def run(self):
         """
-        执行发现任务
-        1. 关键词搜索
-        2. 分析候选KOL
-        3. 筛选入库
+        执行扩散任务
+        1. 从扩散队列获取KOL
+        2. 扩散发现新频道
+        3. 分析新频道
+        4. 筛选入库
         """
         logger.info("=" * 50)
-        logger.info("开始执行发现任务")
+        logger.info("开始执行扩散任务")
         logger.info("=" * 50)
         logger.info(f"配置信息:")
-        logger.info(f"  - 关键词数量: {keyword_limit}")
         logger.info(f"  - AI占比阈值: {self.filter.threshold:.0%}")
         logger.info(f"  - 互动率计算: (点赞×{self.analyzer.like_weight} + 评论×{self.analyzer.comment_weight}) / 观看数")
         logger.info("=" * 50)
         
         # 检查是否已达上限
         if self.filter.should_stop_discovery():
-            logger.info("已达到KOL数量上限，停止发现")
+            logger.info("已达到KOL数量上限，停止扩散")
             return
         
-        # 1. 关键词搜索
-        logger.info("阶段1: 关键词搜索")
-        candidate_channels = self.searcher.search_by_keywords(keyword_limit)
+        # 1. 获取待扩散的KOL
+        expansion_queue = self.repository.get_expansion_queue(limit=10)
         
-        # 去重
-        new_channels = self.filter.deduplicate(candidate_channels)
-        logger.info(f"待分析的新频道数: {len(new_channels)}")
+        if not expansion_queue:
+            logger.info("扩散队列为空，无法执行扩散")
+            return
         
-        # 2. 分析每个候选频道
-        logger.info("阶段2: 分析候选KOL")
+        logger.info(f"待扩散KOL数: {len(expansion_queue)}")
+        
+        all_discovered = set()
+        
+        # 2. 对每个KOL进行扩散
+        for queue_item in expansion_queue:
+            channel_id = queue_item['channel_id']
+            queue_id = queue_item['id']
+            
+            # 更新状态为处理中
+            self.repository.update_expansion_status(queue_id, 'processing')
+            
+            try:
+                # 扩散
+                discovered = self.expander.expand_from_kol(channel_id)
+                all_discovered.update(discovered)
+                
+                # 更新状态为完成
+                self.repository.update_expansion_status(queue_id, 'completed')
+                
+            except Exception as e:
+                logger.error(f"扩散失败: {channel_id}, {str(e)}")
+                continue
+        
+        # 3. 去重
+        new_channels = self.filter.deduplicate(list(all_discovered))
+        logger.info(f"扩散发现新频道数: {len(new_channels)}")
+        
+        # 4. 分析新频道
         qualified_count = 0
         rejected_count = 0
         
@@ -56,11 +82,11 @@ class DiscoveryTask:
                 logger.info("达到上限，停止分析")
                 break
             
-            logger.info(f"\n分析进度: [{i+1}/{len(new_channels)}]")
+            logger.info(f"分析进度: [{i+1}/{len(new_channels)}]")
             
             try:
                 # 先获取频道基本信息，检查是否为竞对
-                from core.scraper import YouTubeScraper
+                from platforms.youtube.scraper import YouTubeScraper
                 temp_scraper = YouTubeScraper()
                 channel_info = temp_scraper.get_channel_info(channel_id)
                 
@@ -71,8 +97,8 @@ class DiscoveryTask:
                 
                 # 分析频道
                 result = self.analyzer.analyze_channel(
-                    channel_id, 
-                    discovered_from=f"keyword_search"
+                    channel_id,
+                    discovered_from=f"expansion"
                 )
                 
                 if not result:
@@ -81,10 +107,9 @@ class DiscoveryTask:
                 kol_data = result['kol_data']
                 video_data_list = result['video_data_list']
                 
-                # 3. 保存到数据库
+                # 保存到数据库
                 self.repository.add_kol(kol_data)
                 
-                # 保存视频数据
                 for video_data in video_data_list:
                     self.repository.add_video(video_data)
                 
@@ -93,8 +118,11 @@ class DiscoveryTask:
                     qualified_count += 1
                     priority = self.analyzer.calculate_priority(kol_data)
                     self.repository.add_to_expansion_queue(channel_id, priority)
+                    
+                    logger.info(f"✓ 合格: {kol_data['channel_name']} - AI占比: {kol_data['ai_ratio']:.1%}")
                 else:
                     rejected_count += 1
+                    logger.info(f"✗ 不合格: {kol_data['channel_name']} - AI占比: {kol_data['ai_ratio']:.1%}")
                 
             except Exception as e:
                 logger.error(f"分析频道失败: {channel_id}, {str(e)}")
@@ -102,8 +130,8 @@ class DiscoveryTask:
         
         # 总结
         logger.info("=" * 50)
-        logger.info(f"发现任务完成")
-        logger.info(f"合格KOL: {qualified_count}")
-        logger.info(f"不合格KOL: {rejected_count}")
+        logger.info(f"扩散任务完成")
+        logger.info(f"新增合格KOL: {qualified_count}")
+        logger.info(f"新增不合格KOL: {rejected_count}")
         logger.info(f"总计KOL数: {self.repository.count_qualified_kols()}")
         logger.info("=" * 50)

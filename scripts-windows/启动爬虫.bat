@@ -169,7 +169,7 @@ if not exist "config\config.json" (
 
 REM 检查并执行数据库迁移
 echo 检查数据库迁移...
-"%VENV_PYTHON%" -c "from storage.migrate import run_migration; import sys; sys.exit(0 if run_migration() else 1)" 2>nul
+"%VENV_PYTHON%" -c "from storage.migrations.migration_v2 import migrate; migrate()" 2>nul
 if errorlevel 1 (
     echo [警告] 数据库迁移检查失败，但系统将继续运行
 ) else (
