@@ -1,0 +1,283 @@
+/* ==================== 全局样式 ==================== */
+
+/* 隐藏Streamlit默认元素 */
+#MainMenu, footer, header {visibility: hidden;}
+
+/* ==================== 侧边栏样式 ==================== */
+
+/* 侧边栏容器 */
+section[data-testid="stSidebar"] {
+    padding-top: 1rem !important;
+}
+
+section[data-testid="stSidebar"] > div {
+    padding: 0 1rem !important;
+}
+
+/* 侧边栏标题 */
+section[data-testid="stSidebar"] h1 {
+    margin-bottom: 0.5rem !important;
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+}
+
+/* 平台分类标题 - 简洁高效 */
+section[data-testid="stSidebar"] h3 {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    color: #fff !important;
+    margin: 1rem 0 0.4rem !important;
+    padding: 0.5rem 0.7rem !important;
+    background: rgba(77, 163, 255, 0.12) !important;
+    border-left: 3px solid #4da3ff !important;
+    border-radius: 4px !important;
+}
+
+/* 侧边栏按钮 - 统一样式 */
+section[data-testid="stSidebar"] button {
+    background: transparent !important;
+    border: none !important;
+    color: #d0d0d0 !important;
+    font-size: 0.9rem !important;
+    padding: 0.45rem 0.7rem !important;
+    text-align: left !important;
+    border-radius: 6px !important;
+    margin: 0.1rem 0 !important;
+}
+
+section[data-testid="stSidebar"] button:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+}
+
+/* 激活按钮 */
+section[data-testid="stSidebar"] button[kind="primary"] {
+    background: rgba(77, 163, 255, 0.18) !important;
+    color: #4da3ff !important;
+    font-weight: 500 !important;
+}
+
+/* 顶级按钮 - 数据浏览/日志/设置 */
+section[data-testid="stSidebar"] button[key*="data_browser"],
+section[data-testid="stSidebar"] button[key*="logs"],
+section[data-testid="stSidebar"] button[key*="settings"] {
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    margin-top: 0.6rem !important;
+    padding: 0.55rem 0.7rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* 统计数字 */
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #4da3ff;
+    margin: 0.2rem 0;
+    line-height: 1;
+}
+
+/* 分割线 */
+section[data-testid="stSidebar"] hr {
+    margin: 0.7rem 0 !important;
+    border: none !important;
+    height: 1px !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* ==================== 主内容区样式 ==================== */
+
+/* 主标题 - 简化渐变 */
+.main-header {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #667eea;
+    text-align: center;
+    padding: 0.8rem 0;
+    margin-bottom: 1.2rem;
+}
+
+/* 主内容按钮 - 简化效果 */
+section[data-testid="stMain"] button {
+    background: #667eea !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 0.55rem 1.2rem !important;
+    font-weight: 600 !important;
+}
+
+section[data-testid="stMain"] button:hover {
+    background: #5568d3 !important;
+}
+
+/* Metric卡片 - 优化视觉效果 */
+[data-testid="stMetric"] {
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1.2rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-testid="stMetric"] label {
+    font-size: 0.85rem !important;
+    color: #999 !important;
+    font-weight: 500 !important;
+}
+
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    font-size: 2rem !important;
+    font-weight: 700 !important;
+    color: #4da3ff !important;
+}
+
+/* 输入框 */
+input, select, textarea {
+    border-radius: 6px !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: #4da3ff !important;
+    outline: none !important;
+}
+
+/* 提示框 - 简化样式 */
+.stSuccess {
+    background: rgba(34, 197, 94, 0.08) !important;
+    border-left: 3px solid #22c55e !important;
+    border-radius: 6px !important;
+    padding: 0.8rem !important;
+}
+
+.stError {
+    background: rgba(239, 68, 68, 0.08) !important;
+    border-left: 3px solid #ef4444 !important;
+    border-radius: 6px !important;
+    padding: 0.8rem !important;
+}
+
+.stWarning {
+    background: rgba(251, 191, 36, 0.08) !important;
+    border-left: 3px solid #fbbf24 !important;
+    border-radius: 6px !important;
+    padding: 0.8rem !important;
+}
+
+.stInfo {
+    background: rgba(59, 130, 246, 0.08) !important;
+    border-left: 3px solid #3b82f6 !important;
+    border-radius: 6px !important;
+    padding: 0.8rem !important;
+}
+
+/* 日志容器 - 优化性能 */
+.log-container {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    padding: 1.2rem;
+    border-radius: 8px;
+    height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 滚动条 - 简化样式 */
+.log-container::-webkit-scrollbar {
+    width: 10px;
+}
+
+.log-container::-webkit-scrollbar-track {
+    background: #2d2d2d;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 5px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}
+
+/* 数据表 */
+.dataframe {
+    font-size: 0.9rem;
+}
+
+/* Tab样式 */
+.stTabs [data-baseweb="tab"] {
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+}
+
+/* ==================== 仪表盘大卡片样式 ==================== */
+
+/* 大卡片 */
+.big-metric-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.big-metric-card.highlight {
+    background: rgba(77, 163, 255, 0.08);
+    border-color: rgba(77, 163, 255, 0.3);
+}
+
+.big-metric-card .metric-label {
+    font-size: 1.1rem;
+    color: #999;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.big-metric-card .metric-value {
+    font-size: 5rem;
+    font-weight: 700;
+    color: #4da3ff;
+    line-height: 1;
+}
+
+.big-metric-card.highlight .metric-value {
+    color: #5eb3ff;
+}
+
+/* 中等卡片 */
+.medium-metric-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.medium-metric-card .metric-label {
+    font-size: 0.95rem;
+    color: #888;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.medium-metric-card .metric-value-medium {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #6eb5ff;
+    line-height: 1;
+}

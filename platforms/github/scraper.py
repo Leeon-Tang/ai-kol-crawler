@@ -588,11 +588,12 @@ class GitHubScraper:
         WaveSpeedAI业务：图像/视频生成API平台
         目标客户：AI应用开发者、内容创作工具开发者、API集成者
         
-        判断标准（针对优质项目贡献者）：
+        判断标准（针对独立开发者）：
         1. 不属于大公司（包括竞争对手）
-        2. 有一定影响力（followers >= 100 或 total_stars >= 100）
-        3. 有原创项目（至少1个非fork仓库）
+        2. 有一定影响力（followers >= 100 或 total_stars >= 500）
+        3. 有原创项目（至少3个非fork仓库，且至少1个有stars）
         4. 有明确的AI相关项目经验
+        5. **核心：必须是独立开发者，不是某个大项目的成员/贡献者**
         """
         username = user_info.get('username', '')
         
@@ -614,22 +615,60 @@ class GitHubScraper:
                 logger.info(f"❌ {username} 属于大公司/竞争对手: {company}")
                 return False
         
-        # 2. 检查影响力（followers >= 100 或 total_stars >= 100）
-        followers = user_info.get('followers', 0)
+        # 2. 获取原创仓库
         original_repos = [r for r in repositories if not r.get('is_fork', False)]
+        
+        # 3. 检查原创仓库数量（至少3个，确保是独立开发者而非单纯贡献者）
+        if len(original_repos) < 3:
+            logger.info(f"❌ {username} 原创仓库不足3个: {len(original_repos)}")
+            return False
+        
+        # 4. 检查是否有自己的有影响力的项目（至少1个原创仓库有stars）
+        repos_with_stars = [r for r in original_repos if r.get('stars', 0) > 0]
+        if len(repos_with_stars) < 1:
+            logger.info(f"❌ {username} 没有有影响力的原创项目（无stars）")
+            return False
+        
+        # 5. 检查影响力（提高标准：followers >= 100 或 total_stars >= 500）
+        followers = user_info.get('followers', 0)
         total_stars = sum(r.get('stars', 0) for r in original_repos)
         
-        if followers < 100 and total_stars < 100:
+        if followers < 100 and total_stars < 500:
             logger.info(f"❌ {username} 影响力不足: followers={followers}, stars={total_stars}")
             return False
         
-        # 3. 检查原创仓库数量（至少1个）
-        if len(original_repos) < 1:
-            logger.info(f"❌ {username} 没有原创仓库")
-            return False
+        # 6. **核心检查：排除大项目的成员/贡献者**
+        # 检查是否主要贡献集中在某个大项目（非自己的项目）
+        # 如果用户的仓库中，fork的项目stars远高于原创项目，说明是贡献者而非独立开发者
+        fork_repos = [r for r in repositories if r.get('is_fork', False)]
+        fork_stars = sum(r.get('stars', 0) for r in fork_repos)
         
-        # 4. 检查是否有AI相关项目（严格匹配核心AI关键词）
-        # 核心AI关键词：必须明确与AI/ML相关
+        # 如果fork项目的stars占比超过70%，说明主要是贡献者
+        if fork_stars > 0 and total_stars > 0:
+            fork_ratio = fork_stars / (fork_stars + total_stars)
+            if fork_ratio > 0.7:
+                logger.info(f"❌ {username} 主要是贡献者而非独立开发者: fork_ratio={fork_ratio:.2f}")
+                return False
+        
+        # 7. 检查是否有知名项目的成员标识
+        # 通过bio、company字段检查是否标注为某个项目的成员
+        bio = (user_info.get('bio') or '').lower()
+        known_projects = [
+            'comfyui', 'automatic1111', 'stable-diffusion-webui',
+            'langchain', 'llama', 'pytorch', 'tensorflow',
+            'huggingface', 'openai', 'anthropic'
+        ]
+        
+        for project in known_projects:
+            # 检查是否在bio或company中标注为该项目成员
+            if f"{project} team" in bio or f"{project} member" in bio or f"{project} contributor" in bio:
+                logger.info(f"❌ {username} 是 {project} 项目成员")
+                return False
+            if project in company and ('team' in company or 'member' in company):
+                logger.info(f"❌ {username} 在company中标注为 {project} 成员")
+                return False
+        
+        # 8. 检查是否有AI相关项目（严格匹配核心AI关键词）
         core_ai_keywords = [
             # 机器学习/深度学习
             'machine-learning', 'deep-learning', 'neural-network', 'ml-model',
@@ -637,7 +676,7 @@ class GitHubScraper:
             # 生成式AI（重点）
             'stable-diffusion', 'diffusion-model', 'text-to-image', 'text-to-video',
             'image-generation', 'video-generation', 'generative-ai', 'gan',
-            'controlnet', 'comfyui', 'automatic1111', 'animatediff',
+            'controlnet', 'animatediff',
             # LLM/NLP
             'gpt', 'llm', 'large-language-model', 'chatbot', 'transformer',
             'bert', 'nlp', 'natural-language',
@@ -679,5 +718,5 @@ class GitHubScraper:
             logger.info(f"❌ {username} 没有明确的AI相关项目")
             return False
         
-        logger.info(f"✓ {username} 合格 - Followers:{followers}, Stars:{total_stars}")
+        logger.info(f"✓ {username} 合格 - 独立开发者 - Followers:{followers}, Stars:{total_stars}, 原创仓库:{len(original_repos)}")
         return True
