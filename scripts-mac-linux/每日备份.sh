@@ -5,17 +5,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 echo "========================================"
-echo "  每日数据备份"
+echo "  Daily Data Backup"
 echo "========================================"
 echo ""
 
 # 检查并创建配置文件（如果不存在）
 if [ ! -f "config/config.json" ]; then
     if [ -f "config/config.example.json" ]; then
-        echo "正在创建配置文件..."
+        echo "Creating config file..."
         mkdir -p config
         cp "config/config.example.json" "config/config.json"
-        echo "[OK] 配置文件已创建"
+        echo "[OK] Config file created"
         echo ""
     fi
 fi
@@ -30,19 +30,19 @@ else
 fi
 
 # 执行备份
-echo "正在备份..."
+echo "Backing up..."
 echo ""
 $PYTHON_EXE scripts/backup_daily.py
 
 if [ $? -ne 0 ]; then
     echo ""
-    echo "[错误] 备份失败"
+    echo "[ERROR] Backup failed"
     exit 1
 fi
 
 echo ""
 echo "========================================"
-echo "  备份完成！"
-echo "  位置: backups/当前日期/"
+echo "  Backup completed!"
+echo "  Location: backups/current_date/"
 echo "========================================"
 echo ""

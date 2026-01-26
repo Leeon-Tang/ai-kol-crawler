@@ -24,57 +24,57 @@ set VENV_PYTHON=%VENV_DIR%\Scripts\python.exe
 REM ============================================
 REM Step 1: Check or download portable Python
 REM ============================================
-echo [步骤 1/5] 检查Python环境...
+echo [Step 1/5] Checking Python environment...
 echo.
 
 if exist "%PYTHON_EXE%" (
-    echo [OK] 已找到便携式Python
+    echo [OK] Portable Python found
     goto :skip_python_download
 )
 
-echo [信息] 未找到便携式Python
-echo [信息] 正在下载Python %PYTHON_VERSION% 便携版...
-echo [信息] 首次运行需要几分钟
+echo [INFO] Portable Python not found
+echo [INFO] Downloading Python %PYTHON_VERSION% portable version...
+echo [INFO] First run may take a few minutes
 echo.
 
 REM Download Python embeddable
 set PYTHON_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip
 set PYTHON_ZIP=%~dp0..\python.zip
 
-echo 正在从python.org下载...
+echo Downloading from python.org...
 powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%PYTHON_URL%' -OutFile '%PYTHON_ZIP%' -UseBasicParsing } catch { exit 1 }"
 
 if not exist "%PYTHON_ZIP%" (
-    echo [错误] 下载失败！
+    echo [ERROR] Download failed!
     echo.
-    echo 请手动下载：
-    echo 1. 访问: https://www.python.org/downloads/
-    echo 2. 下载 "Windows embeddable package (64-bit)"
-    echo 3. 解压到: %PYTHON_DIR%
+    echo Please download manually:
+    echo 1. Visit: https://www.python.org/downloads/
+    echo 2. Download "Windows embeddable package (64-bit)"
+    echo 3. Extract to: %PYTHON_DIR%
     echo.
     pause
     exit /b 1
 )
 
-echo [OK] 下载完成
+echo [OK] Download completed
 echo.
 
 REM Extract Python
-echo 正在解压Python...
+echo Extracting Python...
 powershell -Command "Expand-Archive -Path '%PYTHON_ZIP%' -DestinationPath '%PYTHON_DIR%' -Force"
 del "%PYTHON_ZIP%" >nul 2>&1
 
 if not exist "%PYTHON_EXE%" (
-    echo [错误] 解压失败！
+    echo [ERROR] Extraction failed!
     pause
     exit /b 1
 )
 
-echo [OK] Python解压成功
+echo [OK] Python extracted successfully
 echo.
 
 REM Configure Python to enable pip
-echo 正在配置Python...
+echo Configuring Python...
 set PTH_FILE=%PYTHON_DIR%\python312._pth
 if exist "%PTH_FILE%" (
     (
@@ -85,7 +85,7 @@ if exist "%PTH_FILE%" (
 )
 
 REM Download and install pip
-echo 正在安装pip...
+echo Installing pip...
 set GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py
 set GET_PIP_FILE=%~dp0..\get-pip.py
 
@@ -93,7 +93,7 @@ powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.Security
 "%PYTHON_EXE%" "%GET_PIP_FILE%" --no-warn-script-location
 del "%GET_PIP_FILE%" >nul 2>&1
 
-echo [OK] Python配置完成
+echo [OK] Python configuration completed
 echo.
 
 :skip_python_download
@@ -101,25 +101,25 @@ echo.
 REM ============================================
 REM Step 2: Create virtual environment
 REM ============================================
-echo [步骤 2/5] 配置虚拟环境...
+echo [Step 2/5] Configuring virtual environment...
 echo.
 
 if exist "%VENV_PYTHON%" (
-    echo [OK] 虚拟环境已存在
+    echo [OK] Virtual environment exists
     goto :skip_venv_create
 )
 
-echo 正在创建虚拟环境...
+echo Creating virtual environment...
 "%PYTHON_EXE%" -m pip install virtualenv --quiet
 "%PYTHON_EXE%" -m virtualenv "%VENV_DIR%" --quiet
 
 if not exist "%VENV_PYTHON%" (
-    echo [错误] 虚拟环境创建失败！
+    echo [ERROR] Virtual environment creation failed!
     pause
     exit /b 1
 )
 
-echo [OK] 虚拟环境创建完成
+echo [OK] Virtual environment created
 echo.
 
 :skip_venv_create
@@ -127,24 +127,24 @@ echo.
 REM ============================================
 REM Step 3: Install dependencies
 REM ============================================
-echo [步骤 3/5] 安装依赖包...
+echo [Step 3/5] Installing dependencies...
 echo.
-echo 这可能需要几分钟...
+echo This may take a few minutes...
 echo.
 
 "%VENV_DIR%\Scripts\pip.exe" install -r requirements.txt --quiet --disable-pip-version-check
 
 if errorlevel 1 (
-    echo [警告] 部分依赖包可能安装失败
+    echo [WARNING] Some dependencies may have failed to install
 ) else (
-    echo [OK] 所有依赖包安装完成
+    echo [OK] All dependencies installed
 )
 echo.
 
 REM ============================================
 REM Step 4: Initialize directories and config
 REM ============================================
-echo [步骤 4/5] 初始化系统...
+echo [Step 4/5] Initializing system...
 echo.
 
 if not exist "data" mkdir data
@@ -155,35 +155,35 @@ if not exist "config" mkdir config
 REM 检查并创建配置文件
 if not exist "config\config.json" (
     if exist "config\config.example.json" (
-        echo 正在创建配置文件...
+        echo Creating config file...
         copy "config\config.example.json" "config\config.json" >nul
-        echo [OK] 配置文件已从示例创建
+        echo [OK] Config file created from example
     ) else (
-        echo [错误] 未找到配置示例文件 config\config.example.json
+        echo [ERROR] Config example file not found: config\config.example.json
         pause
         exit /b 1
     )
 ) else (
-    echo [OK] 配置文件已存在
+    echo [OK] Config file exists
 )
 
 REM 检查并执行数据库迁移
-echo 检查数据库迁移...
-"%VENV_PYTHON%" -c "from storage.migrations.migration_v2 import migrate; migrate()" 2>nul
+echo [INFO] Checking database migration...
+"%VENV_PYTHON%" -c "from storage.migrations.migration_v2 import migrate; migrate()"
 if errorlevel 1 (
-    echo [警告] 数据库迁移检查失败，但系统将继续运行
+    echo [WARNING] Database migration check failed, but system will continue
 ) else (
-    echo [OK] 数据库检查完成
+    echo [OK] Database check completed
 )
 echo.
 
-echo [OK] 系统初始化完成
+echo [OK] System initialization completed
 echo.
 
 REM ============================================
 REM Step 5: Start the application
 REM ============================================
-echo [步骤 5/5] 启动Web界面...
+echo [Step 5/5] Starting Web Interface...
 echo.
 
 REM Find available port
@@ -197,17 +197,17 @@ if errorlevel 1 (
     goto :port_found
 )
 
-echo [警告] 端口 %PORT% 已被占用
+echo [WARNING] Port %PORT% is already in use
 set /a PORT+=1
 
 if %PORT% gtr 8510 (
     echo.
-    echo [错误] 未找到可用端口 (8501-8510)
+    echo [ERROR] No available port found (8501-8510)
     echo.
-    echo 可能的解决方案:
-    echo 1. 关闭其他Streamlit应用
-    echo 2. 重启电脑
-    echo 3. 等待几分钟后重试
+    echo Possible solutions:
+    echo 1. Close other Streamlit applications
+    echo 2. Restart computer
+    echo 3. Wait a few minutes and try again
     echo.
     pause
     exit /b 1
@@ -217,19 +217,19 @@ goto :check_port
 
 :port_found
 if %PORT_FOUND% equ 0 (
-    echo [错误] 无法找到可用端口
+    echo [ERROR] Unable to find available port
     pause
     exit /b 1
 )
 
 echo ========================================
-echo   系统就绪！
-echo   正在启动Web界面...
+echo   System Ready!
+echo   Starting Web Interface...
 echo ========================================
 echo.
-echo 浏览器将打开: http://localhost:%PORT%
+echo Browser will open: http://localhost:%PORT%
 echo.
-echo 请勿关闭此窗口！
+echo Do NOT close this window!
 echo.
 
 REM Start Streamlit
@@ -237,13 +237,13 @@ REM Start Streamlit
 
 if errorlevel 1 (
     echo.
-    echo [错误] 启动失败！
+    echo [ERROR] Startup failed!
     echo.
-    echo 可能的解决方案:
-    echo 1. 关闭占用8501-8510端口的应用
-    echo 2. 重启电脑
-    echo 3. 删除python-portable和venv文件夹后重试
-    echo 4. 联系技术支持
+    echo Possible solutions:
+    echo 1. Close applications using ports 8501-8510
+    echo 2. Restart computer
+    echo 3. Delete python-portable and venv folders and try again
+    echo 4. Contact technical support
     echo.
     pause
 )

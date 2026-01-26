@@ -91,19 +91,36 @@ class MigrationV2:
             
             # 步骤2: 检查是否需要数据迁移
             if not self.check_old_tables_exist():
-                print("\n✓ 未发现旧表，无需数据迁移")
-                print("✓ 字段检查完成")
+                print("\n[OK] 未发现旧表，无需数据迁移")
                 return True
             
             if not self.check_new_tables_exist():
-                print("\n✗ 新表不存在，请先初始化数据库")
+                print("\n[错误] 新表不存在，请先初始化数据库")
                 return False
+            
+            # 检查旧表是否有数据
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM kols")
+            old_kol_count = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) FROM youtube_kols")
+            new_kol_count = cursor.fetchone()[0]
+            
+            # 如果旧表有数据且新表为空，才执行迁移
+            if old_kol_count == 0:
+                print("\n[OK] 旧表无数据，无需迁移")
+                cursor.close()
+                return True
+            
+            if new_kol_count > 0:
+                print("\n[OK] 数据已迁移，跳过")
+                cursor.close()
+                return True
             
             print("\n步骤 2: 开始数据迁移...")
             
             # 迁移 kols -> youtube_kols
             print("   2.1 迁移 kols -> youtube_kols")
-            cursor = self.conn.cursor()
             cursor.execute("""
                 INSERT OR IGNORE INTO youtube_kols 
                 SELECT * FROM kols
@@ -132,7 +149,7 @@ class MigrationV2:
             self.conn.commit()
             cursor.close()
             
-            print("\n✓ 数据迁移完成！")
+            print("\n[OK] 数据迁移完成！")
             print(f"  - KOL: {migrated_kols}")
             print(f"  - 视频: {migrated_videos}")
             print(f"  - 队列: {migrated_queue}")
@@ -146,7 +163,7 @@ class MigrationV2:
             return True
             
         except Exception as e:
-            print(f"✗ 迁移失败: {e}")
+            print(f"[错误] 迁移失败: {e}")
             self.conn.rollback()
             return False
         

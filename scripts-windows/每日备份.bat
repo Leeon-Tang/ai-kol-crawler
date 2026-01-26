@@ -1,21 +1,21 @@
 @echo off
 chcp 65001 >nul
 
-REM 切换到项目根目录
-cd /d "%~dp0.."
+REM 保存当前目录并切换到项目根目录
+pushd "%~dp0.."
 
 echo ========================================
-echo   每日数据备份
+echo   Daily Data Backup
 echo ========================================
 echo.
 
 REM 检查并创建配置文件（如果不存在）
 if not exist "config\config.json" (
     if exist "config\config.example.json" (
-        echo 正在创建配置文件...
+        echo Creating config file...
         if not exist "config" mkdir config
         copy "config\config.example.json" "config\config.json" >nul
-        echo [OK] 配置文件已创建
+        echo [OK] Config file created
         echo.
     )
 )
@@ -30,21 +30,24 @@ if exist "venv\Scripts\python.exe" (
 )
 
 REM 执行备份
-echo 正在备份...
+echo Backing up...
 echo.
 "%PYTHON_EXE%" scripts\backup_daily.py
 
 if errorlevel 1 (
     echo.
-    echo [错误] 备份失败
+    echo [ERROR] Backup failed
     pause
     exit /b 1
 )
 
 echo.
 echo ========================================
-echo   备份完成！
-echo   位置: backups\当前日期\
+echo   Backup completed!
+echo   Location: backups\current_date\
 echo ========================================
 echo.
+
+REM 恢复原始目录
+popd
 pause

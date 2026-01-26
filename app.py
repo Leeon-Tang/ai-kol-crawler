@@ -70,10 +70,27 @@ def set_crawler_running(status):
     try:
         status_dir = os.path.dirname(CRAWLER_STATUS_FILE)
         os.makedirs(status_dir, exist_ok=True)
+        
+        # 写入状态
+        status_text = "running" if status else "stopped"
         with open(CRAWLER_STATUS_FILE, 'w', encoding='utf-8') as f:
-            f.write("running" if status else "stopped")
-    except:
-        pass
+            f.write(status_text)
+        
+        # 强制刷新到磁盘
+        if hasattr(os, 'sync'):
+            os.sync()
+        
+        # 验证写入
+        with open(CRAWLER_STATUS_FILE, 'r', encoding='utf-8') as f:
+            written_status = f.read().strip()
+            if written_status != status_text:
+                raise Exception(f"状态写入验证失败: 期望 {status_text}, 实际 {written_status}")
+        
+        add_log(f"爬虫状态已更新: {status_text}", "INFO")
+        return True
+    except Exception as e:
+        add_log(f"设置爬虫状态失败: {str(e)}", "ERROR")
+        return False
 
 def is_crawler_running():
     """获取爬虫运行状态"""
@@ -85,6 +102,33 @@ def is_crawler_running():
     except:
         pass
     return False
+
+def check_and_fix_crawler_status():
+    """检查并修复爬虫状态（如果线程已结束但状态还是运行中）"""
+    try:
+        if not is_crawler_running():
+            return True
+        
+        # 检查是否有活跃的爬虫线程
+        import threading
+        active_threads = threading.enumerate()
+        crawler_thread_exists = any(
+            'run_youtube_crawler_task' in str(t.name) or 
+            'run_github_crawler_task' in str(t.name) or
+            t.name.startswith('Thread-') and t.is_alive()
+            for t in active_threads
+        )
+        
+        # 如果状态是运行中，但没有活跃的爬虫线程，自动修复
+        if not crawler_thread_exists:
+            add_log("检测到爬虫状态异常（无活跃线程但状态为运行中），自动修复", "WARNING")
+            set_crawler_running(False)
+            return True
+        
+        return False
+    except Exception as e:
+        add_log(f"检查爬虫状态时出错: {str(e)}", "ERROR")
+        return False
 
 def init_session_state():
     """初始化会话状态"""
@@ -163,6 +207,7 @@ def clear_logs():
 
 def run_youtube_crawler_task(task_type, repository, **kwargs):
     """运行YouTube爬虫任务"""
+    task = None
     try:
         from platforms.youtube.scraper import YouTubeScraper
         from platforms.youtube.searcher import KeywordSearcher
@@ -192,14 +237,34 @@ def run_youtube_crawler_task(task_type, repository, **kwargs):
             task.run()
         
         add_log(f"任务完成: {task_type}", "SUCCESS")
+        add_log("正在更新爬虫状态...", "INFO")
+        
+    except KeyboardInterrupt:
+        add_log("任务被用户中断", "WARNING")
     except Exception as e:
         add_log(f"任务执行失败: {str(e)}", "ERROR")
         add_log(traceback.format_exc(), "ERROR")
     finally:
-        set_crawler_running(False)
+        # 确保状态一定会被更新
+        try:
+            add_log("任务结束，正在停止爬虫...", "INFO")
+            success = set_crawler_running(False)
+            if success:
+                add_log("爬虫已停止", "SUCCESS")
+            else:
+                add_log("警告：爬虫状态更新可能失败，请手动点击「标记为已完成」", "WARNING")
+        except Exception as e:
+            add_log(f"停止爬虫时出错: {str(e)}", "ERROR")
+            # 强制写入
+            try:
+                with open(CRAWLER_STATUS_FILE, 'w', encoding='utf-8') as f:
+                    f.write("stopped")
+            except:
+                pass
 
 def run_github_crawler_task(task_type, repository, **kwargs):
     """运行GitHub爬虫任务"""
+    task = None
     try:
         from platforms.github.scraper import GitHubScraper
         from platforms.github.searcher import GitHubSearcher
@@ -220,11 +285,30 @@ def run_github_crawler_task(task_type, repository, **kwargs):
             task.run(max_developers=max_developers, strategy=strategy)
         
         add_log(f"GitHub任务完成: {task_type}", "SUCCESS")
+        add_log("正在更新爬虫状态...", "INFO")
+        
+    except KeyboardInterrupt:
+        add_log("任务被用户中断", "WARNING")
     except Exception as e:
         add_log(f"GitHub任务执行失败: {str(e)}", "ERROR")
         add_log(traceback.format_exc(), "ERROR")
     finally:
-        set_crawler_running(False)
+        # 确保状态一定会被更新
+        try:
+            add_log("任务结束，正在停止爬虫...", "INFO")
+            success = set_crawler_running(False)
+            if success:
+                add_log("爬虫已停止", "SUCCESS")
+            else:
+                add_log("警告：爬虫状态更新可能失败，请手动点击「标记为已完成」", "WARNING")
+        except Exception as e:
+            add_log(f"停止爬虫时出错: {str(e)}", "ERROR")
+            # 强制写入
+            try:
+                with open(CRAWLER_STATUS_FILE, 'w', encoding='utf-8') as f:
+                    f.write("stopped")
+            except:
+                pass
 
 
 
@@ -348,13 +432,36 @@ def render_youtube_crawler():
     """渲染YouTube爬虫控制"""
     st.markdown('<div class="main-header">🚀 YouTube 爬虫控制</div>', unsafe_allow_html=True)
     
+    # 检查并修复状态
+    check_and_fix_crawler_status()
+    
     running = is_crawler_running()
     if running:
         st.warning("⚠️ 爬虫正在运行中，请等待任务完成...")
         st.info("💡 切换到「📝 日志查看」页面查看实时进度")
-        if st.button("⏹️ 标记为已完成", key="mark_complete"):
-            set_crawler_running(False)
-            st.rerun()
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⏹️ 标记为已完成", key="mark_complete", use_container_width=True):
+                success = set_crawler_running(False)
+                if success:
+                    st.success("✅ 状态已重置")
+                    time.sleep(0.5)
+                else:
+                    st.error("❌ 状态重置失败")
+                st.rerun()
+        
+        with col2:
+            if st.button("🔄 强制重置状态", key="force_reset", use_container_width=True):
+                try:
+                    # 强制写入
+                    with open(CRAWLER_STATUS_FILE, 'w', encoding='utf-8') as f:
+                        f.write("stopped")
+                    st.success("✅ 已强制重置")
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ 强制重置失败: {e}")
     else:
         st.success("✅ 爬虫空闲，可以启动新任务")
     
@@ -448,102 +555,19 @@ def render_youtube_crawler():
 
 def render_github_crawler():
     """渲染GitHub爬虫控制"""
-    st.markdown('<div class="main-header">🚀 GitHub 爬虫控制</div>', unsafe_allow_html=True)
-    
-    running = is_crawler_running()
-    if running:
-        st.warning("⚠️ 爬虫正在运行中，请等待任务完成...")
-        st.info("💡 切换到「📝 日志查看」页面查看实时进度")
-        if st.button("⏹️ 标记为已完成", key="mark_complete_github"):
-            set_crawler_running(False)
-            st.rerun()
-    else:
-        st.success("✅ 爬虫空闲，可以启动新任务")
-    
-    st.divider()
-    
-    st.subheader("🔍 GitHub开发者发现")
-    st.write("使用网页爬虫（无API限制）搜索GitHub，发现独立AI开发者")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        max_developers = st.slider(
-            "最大爬取开发者数量",
-            min_value=1,
-            max_value=400,
-            value=50,
-            step=1,
-            help="限制本次任务最多爬取的开发者数量"
-        )
-    
-    with col2:
-        strategy = st.selectbox(
-            "搜索策略",
-            ["quality_projects", "comprehensive", "keywords", "topics", "awesome", "explore", "indie"],
-            index=0,
-            format_func=lambda x: {
-                "quality_projects": "🎯 优质项目贡献者（推荐）",
-                "comprehensive": "📦 综合策略",
-                "keywords": "🔑 仅关键词",
-                "topics": "🏷️ 仅Topics",
-                "awesome": "⭐ 仅Awesome列表",
-                "explore": "🔭 仅Explore",
-                "indie": "👤 仅独立开发者"
-            }[x],
-            help="优质项目策略：从Stable Diffusion、ComfyUI等优质AI项目中找贡献者（最精准）"
-        )
-    
-    # 策略说明
-    strategy_info = {
-        "quality_projects": "从Stable Diffusion、ComfyUI等优质AI项目（100+ stars）中找贡献者，筛选有影响力的开发者（最精准，推荐）",
-        "comprehensive": "智能组合多种策略，小数量时只用最快的方法，大数量时全策略覆盖",
-        "keywords": "通过AI相关关键词搜索仓库，提取owner（快速，适合小数量）",
-        "topics": "通过GitHub Topics标签搜索（中等速度，质量较高）",
-        "awesome": "从Awesome列表提取贡献者（慢但质量高）",
-        "explore": "搜索trending项目（覆盖面广）",
-        "indie": "专门搜索独立开发者关键词（精准但数量少）"
-    }
-    
-    st.info(f"💡 {strategy_info[strategy]}")
-    
-    # 预估时间
-    if max_developers <= 10:
-        estimated_time = "约1-2分钟"
-    elif max_developers <= 50:
-        estimated_time = "约3-5分钟"
-    elif max_developers <= 100:
-        estimated_time = "约8-12分钟"
-    else:
-        estimated_time = "约15-25分钟"
-    
-    st.caption(f"⏱️ 预计耗时：{estimated_time}（使用网页爬虫，无API限制）")
-    
-    if st.button("▶️ 开始GitHub发现", disabled=running, key="start_github_discovery"):
-        if not st.session_state.github_repository:
-            st.error("数据库未连接，无法启动任务")
-        else:
-            clear_logs()
-            add_log("=" * 60, "INFO")
-            add_log("开始新的爬虫任务 - GitHub开发者发现", "INFO")
-            add_log("=" * 60, "INFO")
-            add_log(f"用户启动GitHub发现任务", "INFO")
-            add_log(f"  - 最大数量: {max_developers}", "INFO")
-            add_log(f"  - 搜索策略: {strategy}", "INFO")
-            add_log(f"  - 使用网页爬虫（无API限制）", "INFO")
-            
-            thread = threading.Thread(
-                target=run_github_crawler_task,
-                args=("discovery", st.session_state.github_repository),
-                kwargs={"max_developers": max_developers, "strategy": strategy}
-            )
-            thread.daemon = True
-            thread.start()
-            set_crawler_running(True)
-            st.session_state.jump_to_logs = True
-            st.session_state.auto_refresh_enabled = True
-            time.sleep(0.5)
-            st.rerun()
+    from ui.github import render_crawler
+    render_crawler(
+        is_crawler_running_func=is_crawler_running,
+        check_and_fix_status_func=check_and_fix_crawler_status,
+        set_crawler_running_func=set_crawler_running,
+        clear_logs_func=clear_logs,
+        add_log_func=add_log,
+        run_crawler_task_func=run_github_crawler_task,
+        session_state=st.session_state,
+        crawler_status_file=CRAWLER_STATUS_FILE,
+        time_module=time,
+        threading_module=threading
+    )
 
 def render_data_browser():
     """渲染统一的数据浏览页面"""
@@ -724,6 +748,9 @@ def render_logs():
     """渲染日志查看页面"""
     st.markdown('<div class="main-header">📝 实时日志</div>', unsafe_allow_html=True)
     
+    # 检查并修复状态
+    check_and_fix_crawler_status()
+    
     if 'auto_refresh_enabled' not in st.session_state:
         st.session_state.auto_refresh_enabled = True
     
@@ -832,238 +859,13 @@ def render_logs():
 
 def render_ai_rules():
     """渲染YouTube AI规则配置页面"""
-    st.markdown('<div class="main-header">🎯 YouTube AI过滤规则</div>', unsafe_allow_html=True)
-    
-    st.info("💡 配置AI内容识别规则，调整关键词和筛选条件")
-    
-    config_path = os.path.join(PROJECT_ROOT, 'config', 'config.json')
-    config_example_path = os.path.join(PROJECT_ROOT, 'config', 'config.example.json')
-    
-    if not os.path.exists(config_path):
-        if os.path.exists(config_example_path):
-            import shutil
-            os.makedirs(os.path.dirname(config_path), exist_ok=True)
-            shutil.copy(config_example_path, config_path)
-            st.success("✅ 已自动创建配置文件")
-        else:
-            st.error("❌ 配置文件不存在")
-            return
-    
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-    except Exception as e:
-        st.error(f"❌ 读取配置文件失败: {e}")
-        return
-    
-    st.subheader("📊 基础筛选参数")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        ai_ratio_percentage = st.slider("AI占比阈值", min_value=0, max_value=100,
-                                       value=int(config['crawler']['ai_ratio_threshold'] * 100),
-                                       step=5, format="%d%%")
-        ai_ratio_threshold = ai_ratio_percentage / 100.0
-    
-    with col2:
-        sample_video_count = st.number_input("分析视频数", min_value=5, max_value=50,
-                                            value=config['crawler']['sample_video_count'], step=5)
-    
-    with col3:
-        active_days_threshold = st.number_input("活跃度阈值(天)", min_value=30, max_value=365,
-                                               value=config['crawler']['active_days_threshold'], step=30)
-    
-    st.divider()
-    
-    st.subheader("🔑 AI关键词库")
-    tab1, tab2, tab3 = st.tabs(["🔥 高优先级", "⭐ 中优先级", "📌 低优先级"])
-    
-    with tab1:
-        high_keywords = st.text_area("高优先级关键词（每行一个）",
-                                    value="\n".join(config['keywords']['priority_high']),
-                                    height=200)
-    
-    with tab2:
-        medium_keywords = st.text_area("中优先级关键词（每行一个）",
-                                      value="\n".join(config['keywords']['priority_medium']),
-                                      height=200)
-    
-    with tab3:
-        low_keywords = st.text_area("低优先级关键词（每行一个）",
-                                   value="\n".join(config['keywords']['priority_low']),
-                                   height=200)
-    
-    st.divider()
-    
-    st.subheader("🚫 排除规则")
-    all_exclusion_keywords = []
-    all_exclusion_keywords.extend(config['exclusion_rules'].get('course_keywords', []))
-    all_exclusion_keywords.extend(config['exclusion_rules'].get('academic_keywords', []))
-    all_exclusion_keywords.extend(config['exclusion_rules'].get('news_keywords', []))
-    
-    exclusion_keywords = st.text_area("排除关键词（每行一个）", value="\n".join(all_exclusion_keywords),
-                                     height=200)
-    
-    if st.button("💾 保存配置", type="primary", use_container_width=True):
-        config['crawler']['ai_ratio_threshold'] = ai_ratio_threshold
-        config['crawler']['sample_video_count'] = sample_video_count
-        config['crawler']['active_days_threshold'] = active_days_threshold
-        
-        config['keywords']['priority_high'] = [k.strip() for k in high_keywords.split('\n') if k.strip()]
-        config['keywords']['priority_medium'] = [k.strip() for k in medium_keywords.split('\n') if k.strip()]
-        config['keywords']['priority_low'] = [k.strip() for k in low_keywords.split('\n') if k.strip()]
-        
-        exclusion_list = [k.strip() for k in exclusion_keywords.split('\n') if k.strip()]
-        config['exclusion_rules']['course_keywords'] = exclusion_list
-        config['exclusion_rules']['academic_keywords'] = []
-        config['exclusion_rules']['news_keywords'] = []
-        
-        try:
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
-            st.success("✅ 配置已保存！")
-            add_log("YouTube AI规则配置已更新", "INFO")
-        except Exception as e:
-            st.error(f"❌ 保存失败: {e}")
+    from ui.youtube import render_rules
+    render_rules(PROJECT_ROOT, add_log)
 
 def render_github_rules():
     """渲染GitHub规则配置页面"""
-    st.markdown('<div class="main-header">🎯 GitHub 筛选规则</div>', unsafe_allow_html=True)
-    
-    st.info("💡 配置GitHub独立开发者筛选规则")
-    
-    config_path = os.path.join(PROJECT_ROOT, 'config', 'config.json')
-    
-    if not os.path.exists(config_path):
-        st.error("❌ 配置文件不存在")
-        return
-    
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-    except Exception as e:
-        st.error(f"❌ 读取配置文件失败: {e}")
-        return
-    
-    # 如果配置中没有github部分，创建默认配置
-    if 'github' not in config:
-        config['github'] = {
-            'min_followers': 100,
-            'min_stars': 500,
-            'min_repos': 3,
-            'keywords': ['AI', 'machine learning', 'deep learning', 'stable diffusion', 'LLM', 'GPT'],
-            'exclusion_companies': [
-                'Google', 'Microsoft', 'Meta', 'Facebook', 'Amazon', 'Apple',
-                'Alibaba', 'Tencent', 'ByteDance', 'Baidu', 'Huawei', 'OpenAI',
-                'Stability AI', 'Midjourney', 'Runway', 'Anthropic', 'Cohere',
-                'AWS', 'Azure', 'GCP', 'Cloudflare', 'Vercel'
-            ],
-            'exclusion_projects': ['ComfyUI', 'Automatic1111', 'Stable Diffusion WebUI', 'LangChain']
-        }
-    
-    st.subheader("📊 独立开发者判断标准")
-    
-    with st.expander("ℹ️ 什么是独立开发者？", expanded=True):
-        st.markdown("""
-        **独立开发者必须同时满足以下条件：**
-        
-        1. **不属于大公司** - 不在Google、Microsoft、Meta等大公司工作
-        2. **不是项目成员** - 不是ComfyUI、Automatic1111等知名项目的团队成员
-        3. **有原创项目** - 至少有3个非fork的原创仓库
-        4. **有影响力** - Followers ≥ 100 或 总Stars ≥ 500
-        5. **有AI项目** - 至少有1个AI相关的原创项目
-        6. **主要是创作者** - fork项目的stars占比不超过70%（避免纯贡献者）
-        
-        **排除规则：**
-        - Bio或Company中标注为某项目成员（如"ComfyUI team member"）
-        - 主要贡献集中在fork的项目上
-        """)
-    
-    st.divider()
-    
-    st.subheader("🎯 筛选参数")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        min_followers = st.number_input(
-            "最小Followers数", 
-            min_value=0, max_value=10000,
-            value=config['github'].get('min_followers', 100), 
-            step=50,
-            help="开发者的最小粉丝数量"
-        )
-    
-    with col2:
-        min_stars = st.number_input(
-            "最小总Stars数", 
-            min_value=0, max_value=50000,
-            value=config['github'].get('min_stars', 500), 
-            step=100,
-            help="所有原创仓库的总stars数"
-        )
-    
-    with col3:
-        min_repos = st.number_input(
-            "最小原创仓库数", 
-            min_value=1, max_value=100,
-            value=config['github'].get('min_repos', 3), 
-            step=1,
-            help="非fork的原创仓库数量"
-        )
-    
-    st.divider()
-    
-    st.subheader("🔑 AI相关关键词")
-    st.caption("用于搜索和识别AI相关项目的关键词")
-    
-    github_keywords = st.text_area(
-        "关键词（每行一个）",
-        value="\n".join(config['github'].get('keywords', [])),
-        height=150,
-        help="这些关键词用于搜索GitHub仓库和判断项目是否与AI相关"
-    )
-    
-    st.divider()
-    
-    st.subheader("🏢 排除的公司/组织")
-    st.caption("在这些公司工作的开发者将被排除")
-    
-    exclusion_companies = st.text_area(
-        "公司名称（每行一个）",
-        value="\n".join(config['github'].get('exclusion_companies', [])),
-        height=200,
-        help="Company字段包含这些名称的开发者将被过滤"
-    )
-    
-    st.divider()
-    
-    st.subheader("🚫 排除的项目团队")
-    st.caption("这些项目的团队成员将被排除")
-    
-    exclusion_projects = st.text_area(
-        "项目名称（每行一个）",
-        value="\n".join(config['github'].get('exclusion_projects', [])),
-        height=150,
-        help="Bio或Company中标注为这些项目成员的开发者将被过滤"
-    )
-    
-    st.divider()
-    
-    if st.button("💾 保存配置", type="primary", use_container_width=True):
-        config['github']['min_followers'] = min_followers
-        config['github']['min_stars'] = min_stars
-        config['github']['min_repos'] = min_repos
-        config['github']['keywords'] = [k.strip() for k in github_keywords.split('\n') if k.strip()]
-        config['github']['exclusion_companies'] = [k.strip() for k in exclusion_companies.split('\n') if k.strip()]
-        config['github']['exclusion_projects'] = [k.strip() for k in exclusion_projects.split('\n') if k.strip()]
-        
-        try:
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
-            st.success("✅ 配置已保存！新配置将在下次爬虫任务时生效")
-            add_log("GitHub筛选规则配置已更新", "INFO")
-        except Exception as e:
-            st.error(f"❌ 保存失败: {e}")
+    from ui.github import render_rules
+    render_rules(PROJECT_ROOT, add_log)
 
 def render_settings():
     """渲染设置页面"""

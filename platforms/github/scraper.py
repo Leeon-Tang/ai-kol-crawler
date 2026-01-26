@@ -595,6 +595,11 @@ class GitHubScraper:
         4. 有明确的AI相关项目经验
         5. **核心：必须是独立开发者，不是某个大项目的成员/贡献者**
         """
+        # 加载配置（一次性加载）
+        from utils.config_loader import load_config
+        config = load_config()
+        github_config = config.get('github', {})
+        
         username = user_info.get('username', '')
         
         # 1. 排除大公司员工和竞争对手
@@ -618,9 +623,11 @@ class GitHubScraper:
         # 2. 获取原创仓库
         original_repos = [r for r in repositories if not r.get('is_fork', False)]
         
-        # 3. 检查原创仓库数量（至少3个，确保是独立开发者而非单纯贡献者）
-        if len(original_repos) < 3:
-            logger.info(f"❌ {username} 原创仓库不足3个: {len(original_repos)}")
+        # 3. 检查原创仓库数量（从配置文件读取）
+        min_repos = github_config.get('min_repos', 3)
+        
+        if len(original_repos) < min_repos:
+            logger.info(f"❌ {username} 原创仓库不足{min_repos}个: {len(original_repos)}")
             return False
         
         # 4. 检查是否有自己的有影响力的项目（至少1个原创仓库有stars）
@@ -629,12 +636,15 @@ class GitHubScraper:
             logger.info(f"❌ {username} 没有有影响力的原创项目（无stars）")
             return False
         
-        # 5. 检查影响力（提高标准：followers >= 100 或 total_stars >= 500）
+        # 5. 检查影响力（从配置文件读取阈值）
+        min_followers = github_config.get('min_followers', 100)
+        min_stars = github_config.get('min_stars', 500)
+        
         followers = user_info.get('followers', 0)
         total_stars = sum(r.get('stars', 0) for r in original_repos)
         
-        if followers < 100 and total_stars < 500:
-            logger.info(f"❌ {username} 影响力不足: followers={followers}, stars={total_stars}")
+        if followers < min_followers and total_stars < min_stars:
+            logger.info(f"❌ {username} 影响力不足: followers={followers} (需要>={min_followers}), stars={total_stars} (需要>={min_stars})")
             return False
         
         # 6. **核心检查：排除大项目的成员/贡献者**
@@ -668,25 +678,23 @@ class GitHubScraper:
                 logger.info(f"❌ {username} 在company中标注为 {project} 成员")
                 return False
         
-        # 8. 检查是否有AI相关项目（严格匹配核心AI关键词）
-        core_ai_keywords = [
-            # 机器学习/深度学习
+        # 8. 检查是否有AI相关项目（从配置文件读取关键词）
+        core_ai_keywords = github_config.get('core_ai_keywords', [
+            # 默认关键词（如果配置文件中没有）
             'machine-learning', 'deep-learning', 'neural-network', 'ml-model',
             'pytorch', 'tensorflow', 'keras', 'scikit-learn',
-            # 生成式AI（重点）
             'stable-diffusion', 'diffusion-model', 'text-to-image', 'text-to-video',
             'image-generation', 'video-generation', 'generative-ai', 'gan',
             'controlnet', 'animatediff',
-            # LLM/NLP
             'gpt', 'llm', 'large-language-model', 'chatbot', 'transformer',
             'bert', 'nlp', 'natural-language',
-            # 计算机视觉
             'computer-vision', 'object-detection', 'image-recognition',
             'yolo', 'opencv-ai', 'face-recognition'
-        ]
+        ])
         
-        # 辅助关键词：需要与其他词组合才算
-        helper_keywords = ['ai-tool', 'ai-app', 'ai-api', 'ai-sdk', 'ai-saas']
+        helper_keywords = github_config.get('helper_keywords', [
+            'ai-tool', 'ai-app', 'ai-api', 'ai-sdk', 'ai-saas'
+        ])
         
         has_ai_project = False
         ai_repo_name = None

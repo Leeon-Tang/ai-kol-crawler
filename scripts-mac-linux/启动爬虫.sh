@@ -11,8 +11,8 @@ cd "$SCRIPT_DIR"
 
 echo ""
 echo "========================================"
-echo "  AI KOL爬虫系统 - 自动启动"
-echo "  适用于 Mac/Linux"
+echo "  AI KOL Crawler System - Auto Start"
+echo "  For Mac/Linux"
 echo "========================================"
 echo ""
 
@@ -22,7 +22,7 @@ VENV_PYTHON="$VENV_DIR/bin/python"
 # ============================================
 # Step 1: Check Python
 # ============================================
-echo "[步骤 1/5] 检查Python环境..."
+echo "[Step 1/5] Checking Python environment..."
 echo ""
 
 if command -v python3 &> /dev/null; then
@@ -30,9 +30,9 @@ if command -v python3 &> /dev/null; then
 elif command -v python &> /dev/null; then
     PYTHON_CMD="python"
 else
-    echo "[错误] 未找到Python！"
+    echo "[ERROR] Python not found!"
     echo ""
-    echo "请安装Python 3.8+:"
+    echo "Please install Python 3.8+:"
     echo "  Mac: brew install python3"
     echo "  Ubuntu: sudo apt-get install python3 python3-pip python3-venv"
     echo ""
@@ -40,27 +40,27 @@ else
 fi
 
 PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | cut -d' ' -f2)
-echo "[OK] 已找到Python $PYTHON_VERSION"
+echo "[OK] Python $PYTHON_VERSION found"
 echo ""
 
 # ============================================
 # Step 2: Create virtual environment
 # ============================================
-echo "[步骤 2/5] 配置虚拟环境..."
+echo "[Step 2/5] Configuring virtual environment..."
 echo ""
 
 if [ -f "$VENV_PYTHON" ]; then
-    echo "[OK] 虚拟环境已存在"
+    echo "[OK] Virtual environment exists"
 else
-    echo "正在创建虚拟环境..."
+    echo "Creating virtual environment..."
     $PYTHON_CMD -m venv "$VENV_DIR"
     
     if [ ! -f "$VENV_PYTHON" ]; then
-        echo "[错误] 虚拟环境创建失败！"
+        echo "[ERROR] Virtual environment creation failed!"
         exit 1
     fi
     
-    echo "[OK] 虚拟环境创建完成"
+    echo "[OK] Virtual environment created"
 fi
 
 echo ""
@@ -68,9 +68,9 @@ echo ""
 # ============================================
 # Step 3: Install dependencies
 # ============================================
-echo "[步骤 3/5] 安装依赖包..."
+echo "[Step 3/5] Installing dependencies..."
 echo ""
-echo "这可能需要几分钟..."
+echo "This may take a few minutes..."
 echo ""
 
 source "$VENV_DIR/bin/activate"
@@ -78,9 +78,9 @@ source "$VENV_DIR/bin/activate"
 pip install -r "$SCRIPT_DIR/requirements.txt" --quiet --disable-pip-version-check
 
 if [ $? -ne 0 ]; then
-    echo "[警告] 部分依赖包可能安装失败"
+    echo "[WARNING] Some dependencies may have failed to install"
 else
-    echo "[OK] 所有依赖包安装完成"
+    echo "[OK] All dependencies installed"
 fi
 
 echo ""
@@ -88,7 +88,7 @@ echo ""
 # ============================================
 # Step 4: Initialize directories and config
 # ============================================
-echo "[步骤 4/5] 初始化系统..."
+echo "[Step 4/5] Initializing system..."
 echo ""
 
 mkdir -p "$SCRIPT_DIR/data"
@@ -99,34 +99,34 @@ mkdir -p "$SCRIPT_DIR/config"
 # 检查并创建配置文件
 if [ ! -f "$SCRIPT_DIR/config/config.json" ]; then
     if [ -f "$SCRIPT_DIR/config/config.example.json" ]; then
-        echo "正在创建配置文件..."
+        echo "Creating config file..."
         cp "$SCRIPT_DIR/config/config.example.json" "$SCRIPT_DIR/config/config.json"
-        echo "[OK] 配置文件已从示例创建"
+        echo "[OK] Config file created from example"
     else
-        echo "[错误] 未找到配置示例文件 config/config.example.json"
+        echo "[ERROR] Config example file not found: config/config.example.json"
         exit 1
     fi
 else
-    echo "[OK] 配置文件已存在"
+    echo "[OK] Config file exists"
 fi
 
 # 检查并执行数据库迁移
-echo "检查数据库迁移..."
-python -c "from storage.migrations.migration_v2 import migrate; migrate()" 2>/dev/null
+echo "[INFO] Checking database migration..."
+python -c "from storage.migrations.migration_v2 import migrate; migrate()"
 if [ $? -ne 0 ]; then
-    echo "[警告] 数据库迁移检查失败，但系统将继续运行"
+    echo "[WARNING] Database migration check failed, but system will continue"
 else
-    echo "[OK] 数据库检查完成"
+    echo "[OK] Database check completed"
 fi
 echo ""
 
-echo "[OK] 系统初始化完成"
+echo "[OK] System initialization completed"
 echo ""
 
 # ============================================
 # Step 5: Start the application
 # ============================================
-echo "[步骤 5/5] 启动Web界面..."
+echo "[Step 5/5] Starting Web Interface..."
 echo ""
 
 # Find available port
@@ -138,30 +138,30 @@ while [ $PORT -le 8510 ]; do
         PORT_FOUND=1
         break
     fi
-    echo "[警告] 端口 $PORT 已被占用"
+    echo "[WARNING] Port $PORT is already in use"
     PORT=$((PORT + 1))
 done
 
 if [ $PORT_FOUND -eq 0 ]; then
     echo ""
-    echo "[错误] 未找到可用端口 (8501-8510)"
+    echo "[ERROR] No available port found (8501-8510)"
     echo ""
-    echo "可能的解决方案:"
-    echo "1. 关闭其他Streamlit应用"
-    echo "2. 重启电脑"
-    echo "3. 等待几分钟后重试"
+    echo "Possible solutions:"
+    echo "1. Close other Streamlit applications"
+    echo "2. Restart computer"
+    echo "3. Wait a few minutes and try again"
     echo ""
     exit 1
 fi
 
 echo "========================================"
-echo "  系统就绪！"
-echo "  正在启动Web界面..."
+echo "  System Ready!"
+echo "  Starting Web Interface..."
 echo "========================================"
 echo ""
-echo "浏览器将打开: http://localhost:$PORT"
+echo "Browser will open: http://localhost:$PORT"
 echo ""
-echo "请勿关闭此窗口！"
+echo "Do NOT close this window!"
 echo ""
 
 cd "$SCRIPT_DIR"
@@ -169,13 +169,13 @@ python -m streamlit run app.py --server.port $PORT --server.headless false
 
 if [ $? -ne 0 ]; then
     echo ""
-    echo "[错误] 启动失败！"
+    echo "[ERROR] Startup failed!"
     echo ""
-    echo "可能的解决方案:"
-    echo "1. 关闭占用8501-8510端口的应用"
-    echo "2. 重启电脑"
-    echo "3. 删除venv文件夹后重试"
-    echo "4. 联系技术支持"
+    echo "Possible solutions:"
+    echo "1. Close applications using ports 8501-8510"
+    echo "2. Restart computer"
+    echo "3. Delete venv folder and try again"
+    echo "4. Contact technical support"
     echo ""
-    read -p "按Enter键退出..."
+    read -p "Press Enter to exit..."
 fi

@@ -45,6 +45,11 @@ class GitHubAnalyzer:
         # 提取联系方式
         contact_info = self._extract_contact_info(user_info)
         
+        # 如果没有任何联系方式，标记为不合格
+        if not contact_info:
+            logger.info(f"开发者 {username} 没有任何联系方式，标记为不合格")
+            is_indie = False
+        
         result = {
             'username': username,
             'user_id': user_info['user_id'],

@@ -1,0 +1,164 @@
+# -*- coding: utf-8 -*-
+"""
+GitHub规则配置页面
+"""
+import streamlit as st
+import json
+import os
+from .texts import (
+    INDIE_DEVELOPER_EXPLANATION,
+    KEYWORDS_EXPLANATION,
+    DEFAULT_CONFIG,
+    HELP_TEXTS,
+    LABELS,
+    CAPTIONS
+)
+
+
+def render(project_root: str, add_log_func):
+    """
+    渲染GitHub规则配置页面
+    
+    Args:
+        project_root: 项目根目录
+        add_log_func: 日志记录函数
+    """
+    st.markdown(f'<div class="main-header">{LABELS["rules_title"]}</div>', unsafe_allow_html=True)
+    st.info(LABELS["rules_info"])
+    
+    config_path = os.path.join(project_root, 'config', 'config.json')
+    
+    if not os.path.exists(config_path):
+        st.error("❌ 配置文件不存在")
+        return
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+    except Exception as e:
+        st.error(f"❌ 读取配置文件失败: {e}")
+        return
+    
+    # 如果配置中没有github部分，创建默认配置
+    if 'github' not in config:
+        config['github'] = DEFAULT_CONFIG.copy()
+    
+    # 兼容旧配置：如果有keywords字段但没有core_ai_keywords，使用默认值而不是迁移
+    if 'core_ai_keywords' not in config['github']:
+        # 使用完整的默认关键词列表
+        config['github']['core_ai_keywords'] = DEFAULT_CONFIG['core_ai_keywords'].copy()
+    
+    # 确保有helper_keywords
+    if 'helper_keywords' not in config['github']:
+        config['github']['helper_keywords'] = DEFAULT_CONFIG['helper_keywords'].copy()
+    
+    # 渲染独立开发者判断标准
+    st.subheader(LABELS["indie_developer_criteria"])
+    with st.expander("ℹ️ 什么是独立开发者？", expanded=True):
+        st.markdown(INDIE_DEVELOPER_EXPLANATION)
+    
+    st.divider()
+    
+    # 渲染筛选参数
+    st.subheader(LABELS["screening_params"])
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        min_followers = st.number_input(
+            "最小Followers数", 
+            min_value=0, max_value=10000,
+            value=config['github'].get('min_followers', 100), 
+            step=50,
+            help=HELP_TEXTS['min_followers']
+        )
+    
+    with col2:
+        min_stars = st.number_input(
+            "最小总Stars数", 
+            min_value=0, max_value=50000,
+            value=config['github'].get('min_stars', 500), 
+            step=100,
+            help=HELP_TEXTS['min_stars']
+        )
+    
+    with col3:
+        min_repos = st.number_input(
+            "最小原创仓库数", 
+            min_value=1, max_value=100,
+            value=config['github'].get('min_repos', 3), 
+            step=1,
+            help=HELP_TEXTS['min_repos']
+        )
+    
+    st.divider()
+    
+    # 渲染AI关键词配置
+    st.subheader(LABELS["ai_keywords"])
+    
+    tab1, tab2 = st.tabs([LABELS["core_keywords_tab"], LABELS["helper_keywords_tab"]])
+    
+    with tab1:
+        st.caption(CAPTIONS['core_keywords'])
+        core_ai_keywords = st.text_area(
+            "核心关键词（每行一个）",
+            value="\n".join(config['github'].get('core_ai_keywords', [])),
+            height=300,
+            help=HELP_TEXTS['core_ai_keywords']
+        )
+        
+        with st.expander("💡 关键词说明", expanded=False):
+            st.markdown(KEYWORDS_EXPLANATION)
+    
+    with tab2:
+        st.caption(CAPTIONS['helper_keywords'])
+        helper_keywords = st.text_area(
+            "辅助关键词（每行一个）",
+            value="\n".join(config['github'].get('helper_keywords', [])),
+            height=150,
+            help=HELP_TEXTS['helper_keywords']
+        )
+    
+    st.divider()
+    
+    # 渲染排除规则
+    st.subheader(LABELS["exclusion_companies"])
+    st.caption(CAPTIONS['exclusion_companies'])
+    
+    exclusion_companies = st.text_area(
+        "公司名称（每行一个）",
+        value="\n".join(config['github'].get('exclusion_companies', [])),
+        height=200,
+        help=HELP_TEXTS['exclusion_companies']
+    )
+    
+    st.divider()
+    
+    st.subheader(LABELS["exclusion_projects"])
+    st.caption(CAPTIONS['exclusion_projects'])
+    
+    exclusion_projects = st.text_area(
+        "项目名称（每行一个）",
+        value="\n".join(config['github'].get('exclusion_projects', [])),
+        height=150,
+        help=HELP_TEXTS['exclusion_projects']
+    )
+    
+    st.divider()
+    
+    # 保存按钮
+    if st.button(LABELS["save_config"], type="primary", use_container_width=True):
+        config['github']['min_followers'] = min_followers
+        config['github']['min_stars'] = min_stars
+        config['github']['min_repos'] = min_repos
+        config['github']['core_ai_keywords'] = [k.strip() for k in core_ai_keywords.split('\n') if k.strip()]
+        config['github']['helper_keywords'] = [k.strip() for k in helper_keywords.split('\n') if k.strip()]
+        config['github']['exclusion_companies'] = [k.strip() for k in exclusion_companies.split('\n') if k.strip()]
+        config['github']['exclusion_projects'] = [k.strip() for k in exclusion_projects.split('\n') if k.strip()]
+        
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+            st.success(LABELS["config_saved"])
+            add_log_func("GitHub筛选规则配置已更新", "INFO")
+        except Exception as e:
+            st.error(f"{LABELS['config_save_failed']}: {e}")

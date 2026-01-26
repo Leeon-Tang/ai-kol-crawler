@@ -21,23 +21,51 @@ section[data-testid="stSidebar"] h1 {
     font-weight: 700 !important;
 }
 
-/* 平台分类标题 - 简洁高效 */
+/* 平台分类标题 - 兼容深色和浅色主题 */
 section[data-testid="stSidebar"] h3 {
     font-size: 0.95rem !important;
     font-weight: 700 !important;
-    color: #fff !important;
     margin: 1rem 0 0.4rem !important;
     padding: 0.5rem 0.7rem !important;
-    background: rgba(77, 163, 255, 0.12) !important;
-    border-left: 3px solid #4da3ff !important;
     border-radius: 4px !important;
 }
 
-/* 侧边栏按钮 - 统一样式 */
+/* 深色主题 */
+@media (prefers-color-scheme: dark) {
+    section[data-testid="stSidebar"] h3 {
+        color: #fff !important;
+        background: rgba(77, 163, 255, 0.12) !important;
+        border-left: 3px solid #4da3ff !important;
+    }
+}
+
+/* 浅色主题 */
+@media (prefers-color-scheme: light) {
+    section[data-testid="stSidebar"] h3 {
+        color: #1e40af !important;
+        background: rgba(59, 130, 246, 0.08) !important;
+        border-left: 3px solid #3b82f6 !important;
+    }
+}
+
+/* Streamlit浅色主题强制样式 */
+[data-theme="light"] section[data-testid="stSidebar"] h3 {
+    color: #1e40af !important;
+    background: rgba(59, 130, 246, 0.08) !important;
+    border-left: 3px solid #3b82f6 !important;
+}
+
+/* Streamlit深色主题强制样式 */
+[data-theme="dark"] section[data-testid="stSidebar"] h3 {
+    color: #fff !important;
+    background: rgba(77, 163, 255, 0.12) !important;
+    border-left: 3px solid #4da3ff !important;
+}
+
+/* 侧边栏按钮 - 兼容深色和浅色主题 */
 section[data-testid="stSidebar"] button {
     background: transparent !important;
     border: none !important;
-    color: #d0d0d0 !important;
     font-size: 0.9rem !important;
     padding: 0.45rem 0.7rem !important;
     text-align: left !important;
@@ -45,43 +73,254 @@ section[data-testid="stSidebar"] button {
     margin: 0.1rem 0 !important;
 }
 
-section[data-testid="stSidebar"] button:hover {
+/* 深色主题按钮 */
+@media (prefers-color-scheme: dark) {
+    section[data-testid="stSidebar"] button {
+        color: #d0d0d0 !important;
+    }
+    
+    section[data-testid="stSidebar"] button:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #fff !important;
+    }
+    
+    section[data-testid="stSidebar"] button[kind="primary"] {
+        background: rgba(77, 163, 255, 0.18) !important;
+        color: #4da3ff !important;
+        font-weight: 500 !important;
+    }
+}
+
+/* 浅色主题按钮 */
+@media (prefers-color-scheme: light) {
+    section[data-testid="stSidebar"] button {
+        color: #374151 !important;
+    }
+    
+    section[data-testid="stSidebar"] button:hover {
+        background: rgba(59, 130, 246, 0.08) !important;
+        color: #1e40af !important;
+    }
+    
+    section[data-testid="stSidebar"] button[kind="primary"] {
+        background: rgba(59, 130, 246, 0.12) !important;
+        color: #1e40af !important;
+        font-weight: 600 !important;
+    }
+}
+
+/* Streamlit浅色主题强制样式 */
+[data-theme="light"] section[data-testid="stSidebar"] button {
+    color: #374151 !important;
+}
+
+[data-theme="light"] section[data-testid="stSidebar"] button:hover {
+    background: rgba(59, 130, 246, 0.08) !important;
+    color: #1e40af !important;
+}
+
+[data-theme="light"] section[data-testid="stSidebar"] button[kind="primary"] {
+    background: rgba(59, 130, 246, 0.12) !important;
+    color: #1e40af !important;
+    font-weight: 600 !important;
+}
+
+/* Streamlit深色主题强制样式 */
+[data-theme="dark"] section[data-testid="stSidebar"] button {
+    color: #d0d0d0 !important;
+}
+
+[data-theme="dark"] section[data-testid="stSidebar"] button:hover {
     background: rgba(255, 255, 255, 0.08) !important;
     color: #fff !important;
 }
 
-/* 激活按钮 */
-section[data-testid="stSidebar"] button[kind="primary"] {
+[data-theme="dark"] section[data-testid="stSidebar"] button[kind="primary"] {
     background: rgba(77, 163, 255, 0.18) !important;
     color: #4da3ff !important;
     font-weight: 500 !important;
 }
 
-/* 顶级按钮 - 数据浏览/日志/设置 */
-section[data-testid="stSidebar"] button[key*="data_browser"],
+/* 数据浏览按钮 - 特别突出 */
+section[data-testid="stSidebar"] button[key*="data_browser"] {
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    margin: 0.8rem 0 !important;
+    padding: 0.7rem 0.9rem !important;
+    border-radius: 8px !important;
+}
+
+/* 深色主题 - 数据浏览按钮 */
+@media (prefers-color-scheme: dark) {
+    section[data-testid="stSidebar"] button[key*="data_browser"] {
+        background: linear-gradient(135deg, rgba(77, 163, 255, 0.15) 0%, rgba(102, 126, 234, 0.15) 100%) !important;
+        border: 2px solid rgba(77, 163, 255, 0.3) !important;
+        box-shadow: 0 2px 8px rgba(77, 163, 255, 0.2) !important;
+    }
+    
+    section[data-testid="stSidebar"] button[key*="data_browser"]:hover {
+        background: linear-gradient(135deg, rgba(77, 163, 255, 0.25) 0%, rgba(102, 126, 234, 0.25) 100%) !important;
+        border-color: rgba(77, 163, 255, 0.5) !important;
+        box-shadow: 0 4px 12px rgba(77, 163, 255, 0.3) !important;
+        transform: translateY(-1px);
+    }
+    
+    section[data-testid="stSidebar"] button[key*="data_browser"][kind="primary"] {
+        background: linear-gradient(135deg, rgba(77, 163, 255, 0.3) 0%, rgba(102, 126, 234, 0.3) 100%) !important;
+        border-color: rgba(77, 163, 255, 0.6) !important;
+        color: #5eb3ff !important;
+    }
+}
+
+/* 浅色主题 - 数据浏览按钮 */
+@media (prefers-color-scheme: light) {
+    section[data-testid="stSidebar"] button[key*="data_browser"] {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%) !important;
+        border: 2px solid rgba(59, 130, 246, 0.3) !important;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15) !important;
+    }
+    
+    section[data-testid="stSidebar"] button[key*="data_browser"]:hover {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(99, 102, 241, 0.18) 100%) !important;
+        border-color: rgba(59, 130, 246, 0.5) !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
+        transform: translateY(-1px);
+    }
+    
+    section[data-testid="stSidebar"] button[key*="data_browser"][kind="primary"] {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(99, 102, 241, 0.25) 100%) !important;
+        border-color: rgba(59, 130, 246, 0.6) !important;
+        color: #1d4ed8 !important;
+    }
+}
+
+[data-theme="light"] section[data-testid="stSidebar"] button[key*="data_browser"] {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%) !important;
+    border: 2px solid rgba(59, 130, 246, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15) !important;
+}
+
+[data-theme="light"] section[data-testid="stSidebar"] button[key*="data_browser"]:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(99, 102, 241, 0.18) 100%) !important;
+    border-color: rgba(59, 130, 246, 0.5) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
+    transform: translateY(-1px);
+}
+
+[data-theme="light"] section[data-testid="stSidebar"] button[key*="data_browser"][kind="primary"] {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(99, 102, 241, 0.25) 100%) !important;
+    border-color: rgba(59, 130, 246, 0.6) !important;
+    color: #1d4ed8 !important;
+}
+
+[data-theme="dark"] section[data-testid="stSidebar"] button[key*="data_browser"] {
+    background: linear-gradient(135deg, rgba(77, 163, 255, 0.15) 0%, rgba(102, 126, 234, 0.15) 100%) !important;
+    border: 2px solid rgba(77, 163, 255, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(77, 163, 255, 0.2) !important;
+}
+
+[data-theme="dark"] section[data-testid="stSidebar"] button[key*="data_browser"]:hover {
+    background: linear-gradient(135deg, rgba(77, 163, 255, 0.25) 0%, rgba(102, 126, 234, 0.25) 100%) !important;
+    border-color: rgba(77, 163, 255, 0.5) !important;
+    box-shadow: 0 4px 12px rgba(77, 163, 255, 0.3) !important;
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] section[data-testid="stSidebar"] button[key*="data_browser"][kind="primary"] {
+    background: linear-gradient(135deg, rgba(77, 163, 255, 0.3) 0%, rgba(102, 126, 234, 0.3) 100%) !important;
+    border-color: rgba(77, 163, 255, 0.6) !important;
+    color: #5eb3ff !important;
+}
+
+/* 日志和设置按钮 - 普通样式 */
 section[data-testid="stSidebar"] button[key*="logs"],
 section[data-testid="stSidebar"] button[key*="settings"] {
     font-weight: 600 !important;
     font-size: 0.95rem !important;
     margin-top: 0.6rem !important;
     padding: 0.55rem 0.7rem !important;
+}
+    padding: 0.55rem 0.7rem !important;
+}
+
+/* 深色主题 - 日志和设置按钮边框 */
+@media (prefers-color-scheme: dark) {
+    section[data-testid="stSidebar"] button[key*="logs"],
+    section[data-testid="stSidebar"] button[key*="settings"] {
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    }
+}
+
+/* 浅色主题 - 日志和设置按钮边框 */
+@media (prefers-color-scheme: light) {
+    section[data-testid="stSidebar"] button[key*="logs"],
+    section[data-testid="stSidebar"] button[key*="settings"] {
+        border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    }
+}
+
+[data-theme="light"] section[data-testid="stSidebar"] button[key*="logs"],
+[data-theme="light"] section[data-testid="stSidebar"] button[key*="settings"] {
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="dark"] section[data-testid="stSidebar"] button[key*="logs"],
+[data-theme="dark"] section[data-testid="stSidebar"] button[key*="settings"] {
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
-/* 统计数字 */
+/* 统计数字 - 兼容深色和浅色主题 */
 .stat-number {
     font-size: 1.8rem;
     font-weight: 700;
-    color: #4da3ff;
     margin: 0.2rem 0;
     line-height: 1;
 }
 
-/* 分割线 */
+@media (prefers-color-scheme: dark) {
+    .stat-number {
+        color: #4da3ff;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    .stat-number {
+        color: #2563eb;
+    }
+}
+
+[data-theme="light"] .stat-number {
+    color: #2563eb;
+}
+
+[data-theme="dark"] .stat-number {
+    color: #4da3ff;
+}
+
+/* 分割线 - 兼容深色和浅色主题 */
 section[data-testid="stSidebar"] hr {
     margin: 0.7rem 0 !important;
     border: none !important;
     height: 1px !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    section[data-testid="stSidebar"] hr {
+        background: rgba(255, 255, 255, 0.15) !important;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    section[data-testid="stSidebar"] hr {
+        background: rgba(0, 0, 0, 0.12) !important;
+    }
+}
+
+[data-theme="light"] section[data-testid="stSidebar"] hr {
+    background: rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="dark"] section[data-testid="stSidebar"] hr {
     background: rgba(255, 255, 255, 0.15) !important;
 }
 
@@ -111,33 +350,127 @@ section[data-testid="stMain"] button:hover {
     background: #5568d3 !important;
 }
 
-/* Metric卡片 - 优化视觉效果 */
+/* Metric卡片 - 兼容深色和浅色主题 */
 [data-testid="stMetric"] {
-    background: rgba(255, 255, 255, 0.04);
     padding: 1.2rem;
     border-radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-testid="stMetric"] {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-testid="stMetric"] label {
+        color: #999 !important;
+    }
+    
+    [data-testid="stMetric"] [data-testid="stMetricValue"] {
+        color: #4da3ff !important;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    [data-testid="stMetric"] {
+        background: rgba(0, 0, 0, 0.02);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    
+    [data-testid="stMetric"] label {
+        color: #6b7280 !important;
+    }
+    
+    [data-testid="stMetric"] [data-testid="stMetricValue"] {
+        color: #2563eb !important;
+    }
+}
+
+[data-theme="light"] [data-testid="stMetric"] {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] [data-testid="stMetric"] label {
+    color: #6b7280 !important;
+}
+
+[data-theme="light"] [data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: #2563eb !important;
+}
+
+[data-theme="dark"] [data-testid="stMetric"] {
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] [data-testid="stMetric"] label {
+    color: #999 !important;
+}
+
+[data-theme="dark"] [data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: #4da3ff !important;
 }
 
 [data-testid="stMetric"] label {
     font-size: 0.85rem !important;
-    color: #999 !important;
     font-weight: 500 !important;
 }
 
 [data-testid="stMetric"] [data-testid="stMetricValue"] {
     font-size: 2rem !important;
     font-weight: 700 !important;
-    color: #4da3ff !important;
 }
 
-/* 输入框 */
+/* 输入框 - 兼容深色和浅色主题 */
 input, select, textarea {
     border-radius: 6px !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    input, select, textarea {
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+        border-color: #4da3ff !important;
+        outline: none !important;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    input, select, textarea {
+        border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+        border-color: #3b82f6 !important;
+        outline: none !important;
+    }
+}
+
+[data-theme="light"] input, 
+[data-theme="light"] select, 
+[data-theme="light"] textarea {
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme="light"] input:focus, 
+[data-theme="light"] select:focus, 
+[data-theme="light"] textarea:focus {
+    border-color: #3b82f6 !important;
+    outline: none !important;
+}
+
+[data-theme="dark"] input, 
+[data-theme="dark"] select, 
+[data-theme="dark"] textarea {
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 
-input:focus, select:focus, textarea:focus {
+[data-theme="dark"] input:focus, 
+[data-theme="dark"] select:focus, 
+[data-theme="dark"] textarea:focus {
     border-color: #4da3ff !important;
     outline: none !important;
 }
@@ -217,10 +550,8 @@ input:focus, select:focus, textarea:focus {
 
 /* ==================== 仪表盘大卡片样式 ==================== */
 
-/* 大卡片 */
+/* 大卡片 - 兼容深色和浅色主题 */
 .big-metric-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     padding: 3rem 2rem;
     text-align: center;
@@ -230,14 +561,102 @@ input:focus, select:focus, textarea:focus {
     justify-content: center;
 }
 
-.big-metric-card.highlight {
+/* 深色主题 */
+@media (prefers-color-scheme: dark) {
+    .big-metric-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .big-metric-card.highlight {
+        background: rgba(77, 163, 255, 0.08);
+        border-color: rgba(77, 163, 255, 0.3);
+    }
+    
+    .big-metric-card .metric-label {
+        color: #999;
+    }
+    
+    .big-metric-card .metric-value {
+        color: #4da3ff;
+    }
+    
+    .big-metric-card.highlight .metric-value {
+        color: #5eb3ff;
+    }
+}
+
+/* 浅色主题 */
+@media (prefers-color-scheme: light) {
+    .big-metric-card {
+        background: rgba(0, 0, 0, 0.02);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    
+    .big-metric-card.highlight {
+        background: rgba(59, 130, 246, 0.05);
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+    
+    .big-metric-card .metric-label {
+        color: #6b7280;
+    }
+    
+    .big-metric-card .metric-value {
+        color: #2563eb;
+    }
+    
+    .big-metric-card.highlight .metric-value {
+        color: #1d4ed8;
+    }
+}
+
+[data-theme="light"] .big-metric-card {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .big-metric-card.highlight {
+    background: rgba(59, 130, 246, 0.05);
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="light"] .big-metric-card .metric-label {
+    color: #6b7280;
+}
+
+[data-theme="light"] .big-metric-card .metric-value {
+    color: #2563eb;
+}
+
+[data-theme="light"] .big-metric-card.highlight .metric-value {
+    color: #1d4ed8;
+}
+
+[data-theme="dark"] .big-metric-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .big-metric-card.highlight {
     background: rgba(77, 163, 255, 0.08);
     border-color: rgba(77, 163, 255, 0.3);
 }
 
+[data-theme="dark"] .big-metric-card .metric-label {
+    color: #999;
+}
+
+[data-theme="dark"] .big-metric-card .metric-value {
+    color: #4da3ff;
+}
+
+[data-theme="dark"] .big-metric-card.highlight .metric-value {
+    color: #5eb3ff;
+}
+
 .big-metric-card .metric-label {
     font-size: 1.1rem;
-    color: #999;
     font-weight: 500;
     margin-bottom: 1.5rem;
     text-transform: uppercase;
@@ -247,18 +666,11 @@ input:focus, select:focus, textarea:focus {
 .big-metric-card .metric-value {
     font-size: 5rem;
     font-weight: 700;
-    color: #4da3ff;
     line-height: 1;
 }
 
-.big-metric-card.highlight .metric-value {
-    color: #5eb3ff;
-}
-
-/* 中等卡片 */
+/* 中等卡片 - 兼容深色和浅色主题 */
 .medium-metric-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     padding: 2rem 1.5rem;
     text-align: center;
@@ -268,9 +680,64 @@ input:focus, select:focus, textarea:focus {
     justify-content: center;
 }
 
+@media (prefers-color-scheme: dark) {
+    .medium-metric-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .medium-metric-card .metric-label {
+        color: #888;
+    }
+    
+    .medium-metric-card .metric-value-medium {
+        color: #6eb5ff;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    .medium-metric-card {
+        background: rgba(0, 0, 0, 0.015);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    
+    .medium-metric-card .metric-label {
+        color: #6b7280;
+    }
+    
+    .medium-metric-card .metric-value-medium {
+        color: #3b82f6;
+    }
+}
+
+[data-theme="light"] .medium-metric-card {
+    background: rgba(0, 0, 0, 0.015);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .medium-metric-card .metric-label {
+    color: #6b7280;
+}
+
+[data-theme="light"] .medium-metric-card .metric-value-medium {
+    color: #3b82f6;
+}
+
+[data-theme="dark"] .medium-metric-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .medium-metric-card .metric-label {
+    color: #888;
+}
+
+[data-theme="dark"] .medium-metric-card .metric-value-medium {
+    color: #6eb5ff;
+}
+
 .medium-metric-card .metric-label {
     font-size: 0.95rem;
-    color: #888;
     font-weight: 500;
     margin-bottom: 1rem;
 }
@@ -278,6 +745,5 @@ input:focus, select:focus, textarea:focus {
 .medium-metric-card .metric-value-medium {
     font-size: 3rem;
     font-weight: 700;
-    color: #6eb5ff;
     line-height: 1;
 }
