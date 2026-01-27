@@ -35,7 +35,10 @@ class YouTubeRepository:
     
     def update_kol(self, channel_id, update_data):
         """更新KOL信息"""
-        update_data['last_updated'] = datetime.now().isoformat()
+        from datetime import datetime, timedelta, timezone
+        # 使用北京时间
+        beijing_time = (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat()
+        update_data['last_updated'] = beijing_time
         
         set_clause = ', '.join([f"{key} = ?" for key in update_data.keys()])
         query = f"UPDATE youtube_kols SET {set_clause} WHERE channel_id = ?"
@@ -120,7 +123,7 @@ class YouTubeRepository:
         """更新扩散队列状态"""
         query = """
             UPDATE youtube_expansion_queue 
-            SET status = ?, processed_at = datetime('now')
+            SET status = ?, processed_at = datetime('now', '+8 hours')
             WHERE id = ?
         """
         self.db.execute(query, (status, queue_id))

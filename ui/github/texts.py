@@ -137,11 +137,15 @@ STRATEGY_NAMES = {
 
 def get_estimated_time(max_developers: int) -> str:
     """根据开发者数量估算时间"""
-    if max_developers <= 10:
+    if max_developers <= 20:
         return "约1-2分钟"
     elif max_developers <= 50:
         return "约3-5分钟"
     elif max_developers <= 100:
         return "约8-12分钟"
-    else:
+    elif max_developers <= 200:
         return "约15-25分钟"
+    elif max_developers <= 300:
+        return "约25-35分钟"
+    else:
+        return "约35-50分钟"

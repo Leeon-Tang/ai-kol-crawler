@@ -118,6 +118,15 @@ if [ $? -ne 0 ]; then
 else
     echo "[OK] Database check completed"
 fi
+
+# 检查并执行时区迁移
+echo "[INFO] Checking timezone migration..."
+python -c "from storage.migrations.migration_timezone import check_and_migrate_if_needed; check_and_migrate_if_needed(silent=False)"
+if [ $? -ne 0 ]; then
+    echo "[WARNING] Timezone migration check failed, but system will continue"
+else
+    echo "[OK] Timezone check completed"
+fi
 echo ""
 
 echo "[OK] System initialization completed"

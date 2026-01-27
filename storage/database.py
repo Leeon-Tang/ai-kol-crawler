@@ -66,8 +66,8 @@ class Database:
                 contact_info TEXT,
                 status TEXT DEFAULT 'pending',
                 discovered_from TEXT,
-                discovered_at TEXT DEFAULT (datetime('now')),
-                last_updated TEXT DEFAULT (datetime('now')),
+                discovered_at TEXT DEFAULT (datetime('now', '+8 hours')),
+                last_updated TEXT DEFAULT (datetime('now', '+8 hours')),
                 notes TEXT
             )
         """)
@@ -89,7 +89,7 @@ class Database:
                 
                 is_ai_related INTEGER DEFAULT 0,
                 matched_keywords TEXT,
-                scraped_at TEXT DEFAULT (datetime('now')),
+                scraped_at TEXT DEFAULT (datetime('now', '+8 hours')),
                 video_url TEXT,
                 FOREIGN KEY (channel_id) REFERENCES youtube_kols(channel_id)
             )
@@ -102,7 +102,7 @@ class Database:
                 channel_id TEXT NOT NULL,
                 priority INTEGER DEFAULT 0,
                 status TEXT DEFAULT 'pending',
-                created_at TEXT DEFAULT (datetime('now')),
+                created_at TEXT DEFAULT (datetime('now', '+8 hours')),
                 processed_at TEXT
             )
         """)
@@ -147,8 +147,8 @@ class Database:
                 is_indie_developer INTEGER DEFAULT 0,
                 status TEXT DEFAULT 'pending',
                 discovered_from TEXT,
-                discovered_at TEXT DEFAULT (datetime('now')),
-                last_updated TEXT DEFAULT (datetime('now')),
+                discovered_at TEXT DEFAULT (datetime('now', '+8 hours')),
+                last_updated TEXT DEFAULT (datetime('now', '+8 hours')),
                 notes TEXT
             )
         """)
@@ -168,7 +168,7 @@ class Database:
                 is_fork INTEGER DEFAULT 0,
                 created_at TEXT,
                 updated_at TEXT,
-                scraped_at TEXT DEFAULT (datetime('now')),
+                scraped_at TEXT DEFAULT (datetime('now', '+8 hours')),
                 FOREIGN KEY (username) REFERENCES github_developers(username)
             )
         """)

@@ -48,7 +48,10 @@ log_list = []
 
 def add_log(message, level="INFO"):
     """添加日志"""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    from datetime import datetime, timedelta, timezone
+    # 使用北京时间
+    beijing_time = datetime.now(timezone.utc) + timedelta(hours=8)
+    timestamp = beijing_time.strftime("%Y-%m-%d %H:%M:%S")
     log_entry = f"[{timestamp}] [{level}] {message}"
     log_queue.put(log_entry)
     log_list.append(log_entry)
@@ -59,7 +62,7 @@ def add_log(message, level="INFO"):
     try:
         log_dir = "logs"
         os.makedirs(log_dir, exist_ok=True)
-        log_file = f"{log_dir}/{datetime.now().strftime('%Y%m%d')}.log"
+        log_file = f"{log_dir}/{beijing_time.strftime('%Y%m%d')}.log"
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(log_entry + "\n")
     except:
@@ -195,7 +198,9 @@ def clear_logs():
     """清空日志"""
     global log_list
     log_list.clear()
-    log_file = os.path.join(LOG_DIR, f"{datetime.now().strftime('%Y%m%d')}.log")
+    from datetime import datetime, timedelta, timezone
+    beijing_time = datetime.now(timezone.utc) + timedelta(hours=8)
+    log_file = os.path.join(LOG_DIR, f"{beijing_time.strftime('%Y%m%d')}.log")
     if os.path.exists(log_file):
         try:
             with open(log_file, 'w', encoding='utf-8') as f:
@@ -639,13 +644,17 @@ def render_youtube_data_content():
         display_df['平均评论'] = display_df['平均评论'].apply(lambda x: f"{x:,}")
         display_df['联系方式'] = display_df['联系方式'].fillna('')
         
+        # 时间格式化（数据库已存储北京时间，直接显示）
         def format_time(dt):
             if pd.isna(dt):
                 return ""
             if isinstance(dt, str):
-                dt = pd.to_datetime(dt)
-            dt_beijing = dt + pd.Timedelta(hours=8)
-            return dt_beijing.strftime('%Y-%m-%d %H:%M:%S')
+                try:
+                    dt = pd.to_datetime(dt)
+                    return dt.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    return dt
+            return dt.strftime('%Y-%m-%d %H:%M:%S')
         
         display_df['爬取时间'] = display_df['爬取时间'].apply(format_time)
         
@@ -655,27 +664,66 @@ def render_youtube_data_content():
         
         st.divider()
         
-        # 导出按钮 - 合并为一个
-        if st.button("📥 导出数据", key="export_yt_data", use_container_width=True):
-            try:
-                from tasks.youtube.export import YouTubeExportTask
-                export_task = YouTubeExportTask(st.session_state.youtube_repository)
-                filepath = export_task.run()
-                if filepath and os.path.exists(filepath):
-                    with open(filepath, 'rb') as f:
-                        excel_data = f.read()
-                    st.download_button(
-                        label="💾 下载Excel文件",
-                        data=excel_data,
-                        file_name=os.path.basename(filepath),
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True,
-                        key="download_yt_excel_file"
-                    )
-                    add_log(f"导出Excel成功: {filepath}", "SUCCESS")
-            except Exception as e:
-                st.error(f"❌ 导出失败: {str(e)}")
-                add_log(f"导出Excel失败: {str(e)}", "ERROR")
+        # 导出按钮区域
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # 导出所有数据
+            if st.button("📥 导出所有数据", key="export_yt_all_data", use_container_width=True):
+                try:
+                    from tasks.youtube.export import YouTubeExportTask
+                    export_task = YouTubeExportTask(st.session_state.youtube_repository)
+                    filepath = export_task.run()
+                    if filepath and os.path.exists(filepath):
+                        with open(filepath, 'rb') as f:
+                            excel_data = f.read()
+                        st.download_button(
+                            label="💾 下载Excel文件",
+                            data=excel_data,
+                            file_name=os.path.basename(filepath),
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="download_yt_all_excel_file"
+                        )
+                        add_log(f"导出Excel成功: {filepath}", "SUCCESS")
+                except Exception as e:
+                    st.error(f"❌ 导出失败: {str(e)}")
+                    add_log(f"导出Excel失败: {str(e)}", "ERROR")
+        
+        with col2:
+            # 导出今日数据
+            from datetime import datetime, timedelta, timezone
+            beijing_time = datetime.now(timezone.utc) + timedelta(hours=8)
+            today_str = beijing_time.strftime('%Y-%m-%d')
+            
+            if st.button(f"📅 导出今日数据 ({today_str})", key="export_yt_today_data", use_container_width=True):
+                try:
+                    from tasks.youtube.export import YouTubeExportTask
+                    export_task = YouTubeExportTask(st.session_state.youtube_repository)
+                    
+                    # 计算今天的时间范围
+                    today_start = beijing_time.replace(hour=0, minute=0, second=0, microsecond=0)
+                    today_end = beijing_time.replace(hour=23, minute=59, second=59, microsecond=0)
+                    
+                    # 导出今日数据
+                    filepath = export_task.run_today(today_start, today_end)
+                    if filepath and os.path.exists(filepath):
+                        with open(filepath, 'rb') as f:
+                            excel_data = f.read()
+                        st.download_button(
+                            label="💾 下载今日Excel文件",
+                            data=excel_data,
+                            file_name=os.path.basename(filepath),
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="download_yt_today_excel_file"
+                        )
+                        add_log(f"导出今日Excel成功: {filepath}", "SUCCESS")
+                    else:
+                        st.warning("今天暂无数据")
+                except Exception as e:
+                    st.error(f"❌ 导出失败: {str(e)}")
+                    add_log(f"导出今日Excel失败: {str(e)}", "ERROR")
     else:
         st.info("📭 暂无数据")
 
@@ -714,33 +762,86 @@ def render_github_data_content():
         display_df['总Stars'] = display_df['总Stars'].apply(lambda x: f"{x:,}")
         display_df['联系方式'] = display_df['联系方式'].fillna('')
         
+        # 时间格式化（数据库已存储北京时间，直接显示）
+        def format_time(dt):
+            if pd.isna(dt):
+                return ""
+            if isinstance(dt, str):
+                try:
+                    dt = pd.to_datetime(dt)
+                    return dt.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    return dt
+            return dt.strftime('%Y-%m-%d %H:%M:%S')
+        
+        display_df['爬取时间'] = display_df['爬取时间'].apply(format_time)
+        
         table_height = min(max(len(display_df) * 35 + 50, 200), 800)
         st.dataframe(display_df, width='stretch', hide_index=True, height=table_height,
                     column_config={"主页链接": st.column_config.LinkColumn("主页链接", help="点击打开GitHub主页")})
         
         st.divider()
         
-        # 导出按钮 - 合并为一个
-        if st.button("📥 导出数据", key="export_gh_data", use_container_width=True):
-            try:
-                from tasks.github.export import GitHubExportTask
-                export_task = GitHubExportTask(st.session_state.github_repository)
-                filepath = export_task.run()
-                if filepath and os.path.exists(filepath):
-                    with open(filepath, 'rb') as f:
-                        excel_data = f.read()
-                    st.download_button(
-                        label="💾 下载Excel文件",
-                        data=excel_data,
-                        file_name=os.path.basename(filepath),
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True,
-                        key="download_gh_excel_file"
-                    )
-                    add_log(f"导出Excel成功: {filepath}", "SUCCESS")
-            except Exception as e:
-                st.error(f"❌ 导出失败: {str(e)}")
-                add_log(f"导出Excel失败: {str(e)}", "ERROR")
+        # 导出按钮区域
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # 导出所有数据
+            if st.button("📥 导出所有数据", key="export_gh_all_data", use_container_width=True):
+                try:
+                    from tasks.github.export import GitHubExportTask
+                    export_task = GitHubExportTask(st.session_state.github_repository)
+                    filepath = export_task.run()
+                    if filepath and os.path.exists(filepath):
+                        with open(filepath, 'rb') as f:
+                            excel_data = f.read()
+                        st.download_button(
+                            label="💾 下载Excel文件",
+                            data=excel_data,
+                            file_name=os.path.basename(filepath),
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="download_gh_all_excel_file"
+                        )
+                        add_log(f"导出Excel成功: {filepath}", "SUCCESS")
+                except Exception as e:
+                    st.error(f"❌ 导出失败: {str(e)}")
+                    add_log(f"导出Excel失败: {str(e)}", "ERROR")
+        
+        with col2:
+            # 导出今日数据
+            from datetime import datetime, timedelta, timezone
+            beijing_time = datetime.now(timezone.utc) + timedelta(hours=8)
+            today_str = beijing_time.strftime('%Y-%m-%d')
+            
+            if st.button(f"📅 导出今日数据 ({today_str})", key="export_gh_today_data", use_container_width=True):
+                try:
+                    from tasks.github.export import GitHubExportTask
+                    export_task = GitHubExportTask(st.session_state.github_repository)
+                    
+                    # 计算今天的时间范围
+                    today_start = beijing_time.replace(hour=0, minute=0, second=0, microsecond=0)
+                    today_end = beijing_time.replace(hour=23, minute=59, second=59, microsecond=0)
+                    
+                    # 导出今日数据
+                    filepath = export_task.run_today(today_start, today_end)
+                    if filepath and os.path.exists(filepath):
+                        with open(filepath, 'rb') as f:
+                            excel_data = f.read()
+                        st.download_button(
+                            label="💾 下载今日Excel文件",
+                            data=excel_data,
+                            file_name=os.path.basename(filepath),
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="download_gh_today_excel_file"
+                        )
+                        add_log(f"导出今日Excel成功: {filepath}", "SUCCESS")
+                    else:
+                        st.warning("今天暂无数据")
+                except Exception as e:
+                    st.error(f"❌ 导出失败: {str(e)}")
+                    add_log(f"导出今日Excel失败: {str(e)}", "ERROR")
     else:
         st.info("📭 暂无数据")
 
@@ -776,7 +877,10 @@ def render_logs():
     
     st.divider()
     
-    log_file = os.path.join(LOG_DIR, f"{datetime.now().strftime('%Y%m%d')}.log")
+    # 使用北京时间获取日志文件
+    from datetime import datetime, timedelta, timezone
+    beijing_time = datetime.now(timezone.utc) + timedelta(hours=8)
+    log_file = os.path.join(LOG_DIR, f"{beijing_time.strftime('%Y%m%d')}.log")
     all_logs = []
     
     if os.path.exists(log_file):
@@ -888,10 +992,12 @@ def render_settings():
     with col2:
         if st.button("💾 备份数据库", use_container_width=True):
             import shutil
+            from datetime import datetime, timedelta, timezone
             try:
                 backup_dir = "backups"
                 os.makedirs(backup_dir, exist_ok=True)
-                backup_name = f"{backup_dir}/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                beijing_time = datetime.now(timezone.utc) + timedelta(hours=8)
+                backup_name = f"{backup_dir}/backup_{beijing_time.strftime('%Y%m%d_%H%M%S')}.db"
                 shutil.copy('data/ai_kol_crawler.db', backup_name)
                 st.success(f"✅ 备份成功: {backup_name}")
             except Exception as e:

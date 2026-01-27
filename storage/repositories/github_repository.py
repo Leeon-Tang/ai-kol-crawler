@@ -27,7 +27,7 @@ class GitHubRepository:
                     analyzed_repos, total_stars, total_forks, avg_stars, avg_forks,
                     top_languages, original_repos, is_indie_developer, status,
                     discovered_from, last_updated
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '+8 hours'))
             """
             
             params = (
@@ -146,7 +146,7 @@ class GitHubRepository:
     def update_developer_status(self, username: str, status: str) -> bool:
         """更新开发者状态"""
         try:
-            query = "UPDATE github_developers SET status = ?, last_updated = datetime('now') WHERE username = ?"
+            query = "UPDATE github_developers SET status = ?, last_updated = datetime('now', '+8 hours') WHERE username = ?"
             self.db.execute(query, (status, username))
             return True
         except Exception as e:

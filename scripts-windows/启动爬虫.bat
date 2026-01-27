@@ -175,6 +175,15 @@ if errorlevel 1 (
 ) else (
     echo [OK] Database check completed
 )
+
+REM 检查并执行时区迁移
+echo [INFO] Checking timezone migration...
+"%VENV_PYTHON%" -c "from storage.migrations.migration_timezone import check_and_migrate_if_needed; check_and_migrate_if_needed(silent=False)"
+if errorlevel 1 (
+    echo [WARNING] Timezone migration check failed, but system will continue
+) else (
+    echo [OK] Timezone check completed
+)
 echo.
 
 echo [OK] System initialization completed

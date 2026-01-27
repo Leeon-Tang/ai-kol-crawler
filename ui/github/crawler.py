@@ -79,10 +79,10 @@ def render(
     with col1:
         max_developers = st.slider(
             "最大爬取开发者数量",
-            min_value=1,
-            max_value=400,
+            min_value=10,
+            max_value=500,
             value=50,
-            step=1,
+            step=10,
             help="限制本次任务最多爬取的开发者数量"
         )
     
