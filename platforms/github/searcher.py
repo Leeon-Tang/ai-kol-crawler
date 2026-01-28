@@ -23,26 +23,18 @@ class GitHubSearcher:
         """
         过滤掉数据库中已存在的开发者
         
+        注意：此方法已禁用，去重逻辑移到discovery层
+        这样可以动态补充，确保达到目标数量
+        
         Args:
             developers: 开发者用户名集合
             
         Returns:
-            过滤后的开发者集合
+            原样返回（不过滤）
         """
-        if not self.repository:
-            return developers
-        
-        filtered = set()
-        for username in developers:
-            if not self.repository.developer_exists(username):
-                filtered.add(username)
-            else:
-                logger.debug(f"开发者 {username} 已存在，跳过")
-        
-        if len(developers) > len(filtered):
-            logger.info(f"过滤掉 {len(developers) - len(filtered)} 个已存在的开发者")
-        
-        return filtered
+        # 不再在这里过滤，让discovery层处理
+        # 这样discovery可以动态请求更多开发者
+        return developers
     
     def search_by_keywords(self, keywords: List[str] = None, max_results_per_keyword: int = 10, max_developers: int = None) -> List[str]:
         """
@@ -554,16 +546,12 @@ class GitHubSearcher:
         
         developer_list = list(all_developers)[:limit]
         
-        # 过滤掉数据库中已存在的开发者
-        filtered_developers = self._filter_existing_developers(set(developer_list))
-        developer_list = list(filtered_developers)
+        # 注意：不再在这里过滤已存在的开发者
+        # 去重逻辑已移到discovery层，这样可以动态补充
         
         # 随机打乱结果，增加多样性
         random.shuffle(developer_list)
         
-        # 如果过滤后数量不足，截取到limit
-        developer_list = developer_list[:limit]
-        
-        logger.info(f"发现完成，共 {len(developer_list)} 个开发者（已去重和随机化）")
+        logger.info(f"发现完成，共 {len(developer_list)} 个开发者（已随机化）")
         
         return developer_list
