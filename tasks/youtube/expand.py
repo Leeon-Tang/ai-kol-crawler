@@ -2,6 +2,7 @@
 扩散任务 - 从已有KOL扩散发现新KOL
 """
 from utils.logger import setup_logger
+from utils.config_loader import load_config
 
 
 logger = setup_logger()
@@ -15,6 +16,21 @@ class YouTubeExpandTask:
         self.analyzer = analyzer
         self.filter = filter_module
         self.repository = repository
+        self.config = load_config()
+        self.exclusion_channels = self._load_exclusion_channels()
+    
+    def _load_exclusion_channels(self) -> set:
+        """加载频道黑名单"""
+        exclusion_rules = self.config.get('exclusion_rules', {})
+        exclusion_list = exclusion_rules.get('exclusion_channels', [])
+        exclusion_set = {channel_id.lower() for channel_id in exclusion_list if channel_id}
+        if exclusion_set:
+            logger.info(f"已加载YouTube频道黑名单: {len(exclusion_set)} 个")
+        return exclusion_set
+    
+    def _is_in_exclusion_list(self, channel_id: str) -> bool:
+        """检查频道是否在黑名单中"""
+        return channel_id.lower() in self.exclusion_channels
     
     def run(self):
         """
@@ -30,6 +46,8 @@ class YouTubeExpandTask:
         logger.info(f"配置信息:")
         logger.info(f"  - AI占比阈值: {self.filter.threshold:.0%}")
         logger.info(f"  - 互动率计算: (点赞×{self.analyzer.like_weight} + 评论×{self.analyzer.comment_weight}) / 观看数")
+        if self.exclusion_channels:
+            logger.info(f"  - 黑名单: {len(self.exclusion_channels)} 个频道将被跳过")
         logger.info("=" * 50)
         
         # 检查是否已达上限
@@ -83,6 +101,11 @@ class YouTubeExpandTask:
                 break
             
             logger.info(f"分析进度: [{i+1}/{len(new_channels)}]")
+            
+            # 检查是否在黑名单中
+            if self._is_in_exclusion_list(channel_id):
+                logger.info(f"🚫 频道在黑名单中，跳过: {channel_id}")
+                continue
             
             try:
                 # 先获取频道基本信息，检查是否为竞对

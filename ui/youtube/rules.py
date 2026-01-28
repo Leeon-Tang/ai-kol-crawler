@@ -125,6 +125,47 @@ def render(project_root: str, add_log_func):
         help=HELP_TEXTS['exclusion_keywords']
     )
     
+    st.divider()
+    
+    # 新增：已爬取频道黑名单
+    st.subheader(LABELS["exclusion_channels"])
+    
+    with st.expander("💡 使用说明", expanded=False):
+        st.markdown("""
+        **适用场景：**
+        - 数据库被误删，需要重新爬取
+        - 想避免重复爬取已经联系过的KOL
+        
+        **使用方法：**
+        1. 将已爬取过的频道ID粘贴到下方文本框
+        2. 每行一个频道ID（如：UCxxxxxxxxxxxxxx）
+        3. 保存配置后，爬虫会自动跳过这些频道
+        
+        **如何获取频道ID：**
+        - 方法1：从YouTube频道URL中获取（youtube.com/channel/UCxxxxxx）
+        - 方法2：从导出的Excel文件中复制channel_id列
+        
+        **注意：**
+        - 只需要填写频道ID，不需要完整URL
+        - 大小写不敏感（会自动转为小写）
+        - 空行会被自动忽略
+        """)
+    
+    exclusion_channels = st.text_area(
+        "频道ID（每行一个）",
+        value="\n".join(config['exclusion_rules'].get('exclusion_channels', [])),
+        height=200,
+        help=HELP_TEXTS['exclusion_channels'],
+        placeholder="例如：\nUCxxxxxxxxxxxxxx\nUCyyyyyyyyyyyyyy"
+    )
+    
+    # 显示统计
+    exclusion_channel_list = [c.strip().lower() for c in exclusion_channels.split('\n') if c.strip()]
+    if exclusion_channel_list:
+        st.info(f"📊 当前黑名单中有 {len(exclusion_channel_list)} 个频道")
+    
+    st.divider()
+    
     # 保存按钮
     if st.button(LABELS["save_config"], type="primary", use_container_width=True):
         config['crawler']['ai_ratio_threshold'] = ai_ratio_threshold
@@ -140,10 +181,15 @@ def render(project_root: str, add_log_func):
         config['exclusion_rules']['academic_keywords'] = []
         config['exclusion_rules']['news_keywords'] = []
         
+        # 保存频道黑名单（转为小写）
+        config['exclusion_rules']['exclusion_channels'] = [c.strip().lower() for c in exclusion_channels.split('\n') if c.strip()]
+        
         try:
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
             st.success(LABELS["config_saved"])
+            if exclusion_channel_list:
+                st.success(f"✅ 已保存 {len(exclusion_channel_list)} 个频道到黑名单")
             add_log_func("YouTube AI规则配置已更新", "INFO")
         except Exception as e:
             st.error(f"{LABELS['config_save_failed']}: {e}")

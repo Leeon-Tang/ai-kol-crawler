@@ -11,6 +11,7 @@ LABELS = {
     'basic_params': '📊 基础筛选参数',
     'ai_keywords': '🔑 AI关键词库',
     'exclusion_rules': '🚫 排除规则',
+    'exclusion_channels': '🚫 已爬取频道黑名单',
     'high_priority_tab': '🔥 高优先级',
     'medium_priority_tab': '⭐ 中优先级',
     'low_priority_tab': '📌 低优先级',
@@ -30,7 +31,8 @@ HELP_TEXTS = {
     'high_keywords': '高优先级AI关键词，匹配权重最高',
     'medium_keywords': '中优先级AI关键词',
     'low_keywords': '低优先级AI关键词',
-    'exclusion_keywords': '包含这些关键词的频道将被排除（如教程、新闻类）'
+    'exclusion_keywords': '包含这些关键词的频道将被排除（如教程、新闻类）',
+    'exclusion_channels': '已爬取过的频道ID列表，避免重复爬取浪费资源（适用于数据库被删除后重新爬取的场景）'
 }
 
 # ==================== 说明文本 ====================

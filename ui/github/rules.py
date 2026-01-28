@@ -52,6 +52,10 @@ def render(project_root: str, add_log_func):
     if 'helper_keywords' not in config['github']:
         config['github']['helper_keywords'] = DEFAULT_CONFIG['helper_keywords'].copy()
     
+    # 确保有exclusion_developers（新增）
+    if 'exclusion_developers' not in config['github']:
+        config['github']['exclusion_developers'] = []
+    
     # 渲染独立开发者判断标准
     st.subheader(LABELS["indie_developer_criteria"])
     with st.expander("ℹ️ 什么是独立开发者？", expanded=True):
@@ -145,6 +149,42 @@ def render(project_root: str, add_log_func):
     
     st.divider()
     
+    # 新增：已爬取开发者黑名单
+    st.subheader(LABELS["exclusion_developers"])
+    st.caption(CAPTIONS['exclusion_developers'])
+    
+    with st.expander("💡 使用说明", expanded=False):
+        st.markdown("""
+        **适用场景：**
+        - 数据库被误删，需要重新爬取
+        - 想避免重复爬取已经联系过的开发者
+        
+        **使用方法：**
+        1. 将已爬取过的开发者用户名粘贴到下方文本框
+        2. 每行一个用户名（如：torvalds）
+        3. 保存配置后，爬虫会自动跳过这些用户
+        
+        **注意：**
+        - 只需要填写GitHub用户名，不需要完整URL
+        - 大小写不敏感（会自动转为小写）
+        - 空行会被自动忽略
+        """)
+    
+    exclusion_developers = st.text_area(
+        "开发者用户名（每行一个）",
+        value="\n".join(config['github'].get('exclusion_developers', [])),
+        height=200,
+        help=HELP_TEXTS['exclusion_developers'],
+        placeholder="例如：\ntorvalds\nguido\ngvanrossum"
+    )
+    
+    # 显示统计
+    exclusion_dev_list = [d.strip().lower() for d in exclusion_developers.split('\n') if d.strip()]
+    if exclusion_dev_list:
+        st.info(f"📊 当前黑名单中有 {len(exclusion_dev_list)} 个开发者")
+    
+    st.divider()
+    
     # 保存按钮
     if st.button(LABELS["save_config"], type="primary", use_container_width=True):
         config['github']['min_followers'] = min_followers
@@ -154,11 +194,15 @@ def render(project_root: str, add_log_func):
         config['github']['helper_keywords'] = [k.strip() for k in helper_keywords.split('\n') if k.strip()]
         config['github']['exclusion_companies'] = [k.strip() for k in exclusion_companies.split('\n') if k.strip()]
         config['github']['exclusion_projects'] = [k.strip() for k in exclusion_projects.split('\n') if k.strip()]
+        # 保存开发者黑名单（转为小写）
+        config['github']['exclusion_developers'] = [k.strip().lower() for k in exclusion_developers.split('\n') if k.strip()]
         
         try:
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
             st.success(LABELS["config_saved"])
+            if exclusion_dev_list:
+                st.success(f"✅ 已保存 {len(exclusion_dev_list)} 个开发者到黑名单")
             add_log_func("GitHub筛选规则配置已更新", "INFO")
         except Exception as e:
             st.error(f"{LABELS['config_save_failed']}: {e}")

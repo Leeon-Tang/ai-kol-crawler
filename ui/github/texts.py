@@ -70,7 +70,8 @@ DEFAULT_CONFIG = {
         'Stability AI', 'Midjourney', 'Runway', 'Anthropic', 'Cohere',
         'AWS', 'Azure', 'GCP', 'Cloudflare', 'Vercel'
     ],
-    'exclusion_projects': ['ComfyUI', 'Automatic1111', 'Stable Diffusion WebUI', 'LangChain']
+    'exclusion_projects': ['ComfyUI', 'Automatic1111', 'Stable Diffusion WebUI', 'LangChain'],
+    'exclusion_developers': []  # 已爬取的开发者黑名单
 }
 
 # ==================== 帮助文本 ====================
@@ -82,7 +83,8 @@ HELP_TEXTS = {
     'core_ai_keywords': "这些关键词用于判断项目是否与AI相关，包括：机器学习、生成式AI、LLM、计算机视觉等",
     'helper_keywords': "这些关键词需要与'ai'组合使用，如：ai-tool, ai-api, ai-sdk",
     'exclusion_companies': "Company字段包含这些名称的开发者将被过滤",
-    'exclusion_projects': "Bio或Company中标注为这些项目成员的开发者将被过滤"
+    'exclusion_projects': "Bio或Company中标注为这些项目成员的开发者将被过滤",
+    'exclusion_developers': "已爬取过的开发者用户名列表，避免重复爬取浪费资源（适用于数据库被删除后重新爬取的场景）"
 }
 
 # ==================== 标签 ====================
@@ -97,6 +99,7 @@ LABELS = {
     'helper_keywords_tab': '🔧 辅助关键词',
     'exclusion_companies': '🏢 排除的公司/组织',
     'exclusion_projects': '🚫 排除的项目团队',
+    'exclusion_developers': '🚫 已爬取开发者黑名单',
     'save_config': '💾 保存配置',
     'config_saved': '✅ 配置已保存！新配置将在下次爬虫任务时生效',
     'config_save_failed': '❌ 保存失败',
@@ -108,7 +111,8 @@ CAPTIONS = {
     'core_keywords': '用于识别AI相关项目的核心关键词（匹配任意一个即可）',
     'helper_keywords': '辅助关键词（需要同时包含\'ai\'才算匹配）',
     'exclusion_companies': '在这些公司工作的开发者将被排除',
-    'exclusion_projects': '这些项目的团队成员将被排除'
+    'exclusion_projects': '这些项目的团队成员将被排除',
+    'exclusion_developers': '⚠️ 已爬取过的开发者用户名（每行一个），爬虫会自动跳过这些用户，避免重复爬取'
 }
 
 # ==================== 搜索策略 ====================

@@ -4,6 +4,7 @@ GitHub开发者发现任务
 """
 from typing import List
 from utils.logger import setup_logger
+from utils.config_loader import load_config
 from platforms.github import GitHubPlatform
 
 logger = setup_logger()
@@ -16,6 +17,22 @@ class GitHubDiscoveryTask:
         self.searcher = searcher
         self.analyzer = analyzer
         self.repository = repository
+        self.config = load_config()
+        self.exclusion_developers = self._load_exclusion_developers()
+    
+    def _load_exclusion_developers(self) -> set:
+        """加载开发者黑名单"""
+        github_config = self.config.get('github', {})
+        exclusion_list = github_config.get('exclusion_developers', [])
+        # 转为小写的set，方便快速查找
+        exclusion_set = {username.lower() for username in exclusion_list if username}
+        if exclusion_set:
+            logger.info(f"已加载开发者黑名单: {len(exclusion_set)} 个")
+        return exclusion_set
+    
+    def _is_in_exclusion_list(self, username: str) -> bool:
+        """检查开发者是否在黑名单中"""
+        return username.lower() in self.exclusion_developers
     
     def run(self, max_developers: int = 50, strategy: str = 'comprehensive'):
         """
@@ -30,6 +47,8 @@ class GitHubDiscoveryTask:
         logger.info(f"目标合格数量: {max_developers} 个开发者")
         logger.info(f"搜索策略: {strategy}")
         logger.info("使用网页爬虫（无API速率限制）")
+        if self.exclusion_developers:
+            logger.info(f"黑名单: {len(self.exclusion_developers)} 个开发者将被跳过")
         logger.info("=" * 60)
         
         qualified_count = 0
@@ -89,6 +108,12 @@ class GitHubDiscoveryTask:
                     break
                 
                 logger.info(f"\n[批次{batch_number}-{i}/{len(developers)}] [总进度: {qualified_count}/{max_developers}] 处理: {username}")
+                
+                # 检查是否在黑名单中
+                if self._is_in_exclusion_list(username):
+                    logger.info(f"  🚫 开发者在黑名单中，跳过")
+                    skipped_existing += 1
+                    continue
                 
                 # 检查是否已存在
                 if self.repository.developer_exists(username):
