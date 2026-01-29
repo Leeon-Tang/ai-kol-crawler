@@ -158,16 +158,23 @@ def connect_database():
             
             db = Database()
             db.connect()
+            
+            # 检查数据库完整性
+            if not db.check_integrity():
+                add_log("检测到数据库损坏，尝试修复...", "WARNING")
+                if db.repair_database():
+                    add_log("数据库修复成功", "SUCCESS")
+                else:
+                    add_log("数据库修复失败，请手动检查", "ERROR")
+                    st.error("数据库损坏且无法自动修复，请查看日志")
+                    return False
+            
             db.init_tables()
             
             # 尝试迁移旧数据
             try:
-                from storage.migrations.migration_v2 import MigrationV2
-                migration = MigrationV2()
-                if migration.check_old_tables_exist():
-                    add_log("检测到旧版数据，正在迁移...", "INFO")
-                    migration.migrate()
-                    add_log("数据迁移完成", "INFO")
+                from storage.migrations.migration_v2 import migrate
+                migrate()
             except Exception as e:
                 add_log(f"数据迁移检查: {e}", "WARNING")
             
@@ -177,6 +184,7 @@ def connect_database():
             return True
     except Exception as e:
         st.error(f"数据库连接失败: {str(e)}")
+        add_log(f"数据库连接失败: {str(e)}", "ERROR")
         return False
     return True
 
@@ -624,7 +632,21 @@ def render_youtube_data_content():
         query += f" WHERE status = '{status_map[status_filter]}'"
     query += f" ORDER BY {sort_map[sort_by]} LIMIT {limit}"
     
-    kols = st.session_state.db.fetchall(query)
+    try:
+        kols = st.session_state.db.fetchall(query)
+    except Exception as e:
+        st.error(f"❌ 数据库查询失败: {str(e)}")
+        add_log(f"YouTube数据查询失败: {str(e)}", "ERROR")
+        
+        # 提供修复选项
+        if st.button("🔧 尝试修复数据库", key="repair_db_yt"):
+            if st.session_state.db.repair_database():
+                st.success("✅ 数据库修复成功，请刷新页面")
+                add_log("数据库修复成功", "SUCCESS")
+            else:
+                st.error("❌ 数据库修复失败")
+                add_log("数据库修复失败", "ERROR")
+        return
     
     if kols:
         df = pd.DataFrame(kols)
@@ -749,7 +771,21 @@ def render_github_data_content():
         query += f" WHERE status = '{status_map[status_filter]}'"
     query += f" ORDER BY {sort_map[sort_by]} LIMIT {limit}"
     
-    devs = st.session_state.db.fetchall(query)
+    try:
+        devs = st.session_state.db.fetchall(query)
+    except Exception as e:
+        st.error(f"❌ 数据库查询失败: {str(e)}")
+        add_log(f"GitHub数据查询失败: {str(e)}", "ERROR")
+        
+        # 提供修复选项
+        if st.button("🔧 尝试修复数据库", key="repair_db_gh"):
+            if st.session_state.db.repair_database():
+                st.success("✅ 数据库修复成功，请刷新页面")
+                add_log("数据库修复成功", "SUCCESS")
+            else:
+                st.error("❌ 数据库修复失败")
+                add_log("数据库修复失败", "ERROR")
+        return
     
     if devs:
         df = pd.DataFrame(devs)
@@ -1004,8 +1040,17 @@ def render_settings():
                 st.error(f"❌ 备份失败: {e}")
     
     with col3:
-        if st.button("🗑️ 清空数据库", use_container_width=True):
-            st.warning("⚠️ 此操作将删除所有数据，无法恢复！")
+        if st.button("修复数据库", use_container_width=True):
+            if st.session_state.db:
+                with st.spinner("正在修复数据库..."):
+                    if st.session_state.db.repair_database():
+                        st.success("✅ 数据库修复成功")
+                        add_log("数据库修复成功", "SUCCESS")
+                    else:
+                        st.error("❌ 数据库修复失败")
+                        add_log("数据库修复失败", "ERROR")
+            else:
+                st.warning("数据库未连接")
     
     st.divider()
     

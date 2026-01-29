@@ -21,9 +21,23 @@ class Database:
     
     def connect(self):
         """建立数据库连接"""
-        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self.cursor = self.conn.cursor()
+        try:
+            # 添加超时和其他参数以避免I/O错误
+            self.conn = sqlite3.connect(
+                self.db_path, 
+                check_same_thread=False,
+                timeout=30.0,  # 增加超时时间
+                isolation_level=None  # 自动提交模式，减少锁定
+            )
+            self.conn.row_factory = sqlite3.Row
+            # 启用WAL模式以提高并发性能
+            self.conn.execute('PRAGMA journal_mode=WAL')
+            # 设置同步模式为NORMAL以提高性能
+            self.conn.execute('PRAGMA synchronous=NORMAL')
+            self.cursor = self.conn.cursor()
+        except Exception as e:
+            print(f"数据库连接失败: {e}")
+            raise
     
     def close(self):
         """关闭数据库连接"""
@@ -31,6 +45,41 @@ class Database:
             self.cursor.close()
         if self.conn:
             self.conn.close()
+    
+    def check_integrity(self):
+        """检查数据库完整性"""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("PRAGMA integrity_check")
+            result = cursor.fetchone()
+            cursor.close()
+            return result[0] == 'ok'
+        except Exception as e:
+            print(f"数据库完整性检查失败: {e}")
+            return False
+    
+    def repair_database(self):
+        """尝试修复数据库"""
+        try:
+            # 关闭当前连接
+            self.close()
+            
+            # 创建备份
+            import shutil
+            from datetime import datetime
+            backup_path = f"{self.db_path}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            shutil.copy2(self.db_path, backup_path)
+            print(f"数据库已备份到: {backup_path}")
+            
+            # 重新连接并尝试修复
+            self.connect()
+            self.conn.execute("VACUUM")
+            self.conn.commit()
+            
+            return True
+        except Exception as e:
+            print(f"数据库修复失败: {e}")
+            return False
     
     def init_tables(self):
         """初始化所有平台的数据库表"""
@@ -188,28 +237,54 @@ class Database:
     
     def fetchone(self, query, params=None):
         """查询单条记录"""
-        cursor = self.conn.cursor()
-        if params:
-            cursor.execute(query, params)
-        else:
-            cursor.execute(query)
-        result = cursor.fetchone()
-        cursor.close()
+        max_retries = 3
+        retry_delay = 0.5
         
-        if result:
-            return dict(result)
-        return result
+        for attempt in range(max_retries):
+            try:
+                cursor = self.conn.cursor()
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+                result = cursor.fetchone()
+                cursor.close()
+                
+                if result:
+                    return dict(result)
+                return result
+            except sqlite3.OperationalError as e:
+                if attempt < max_retries - 1 and ('locked' in str(e).lower() or 'I/O' in str(e)):
+                    import time
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # 指数退避
+                    continue
+                else:
+                    raise
     
     def fetchall(self, query, params=None):
         """查询多条记录"""
-        cursor = self.conn.cursor()
-        if params:
-            cursor.execute(query, params)
-        else:
-            cursor.execute(query)
-        results = cursor.fetchall()
-        cursor.close()
+        max_retries = 3
+        retry_delay = 0.5
         
-        if results:
-            return [dict(row) for row in results]
-        return results
+        for attempt in range(max_retries):
+            try:
+                cursor = self.conn.cursor()
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+                results = cursor.fetchall()
+                cursor.close()
+                
+                if results:
+                    return [dict(row) for row in results]
+                return results
+            except sqlite3.OperationalError as e:
+                if attempt < max_retries - 1 and ('locked' in str(e).lower() or 'I/O' in str(e)):
+                    import time
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # 指数退避
+                    continue
+                else:
+                    raise

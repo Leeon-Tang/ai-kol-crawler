@@ -30,6 +30,8 @@ class MigrationV2:
     
     def check_old_tables_exist(self):
         """检查旧表是否存在"""
+        if not self.conn:
+            self.connect()
         cursor = self.conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='kols'")
         result = cursor.fetchone()
@@ -38,6 +40,8 @@ class MigrationV2:
     
     def check_new_tables_exist(self):
         """检查新表是否存在"""
+        if not self.conn:
+            self.connect()
         cursor = self.conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='youtube_kols'")
         result = cursor.fetchone()
@@ -46,6 +50,8 @@ class MigrationV2:
     
     def check_and_add_fields(self):
         """检查并添加缺失的字段"""
+        if not self.conn:
+            self.connect()
         cursor = self.conn.cursor()
         
         # 定义需要检查的表和字段
@@ -82,7 +88,8 @@ class MigrationV2:
     
     def migrate(self):
         """执行迁移"""
-        self.connect()
+        if not self.conn:
+            self.connect()
         
         try:
             # 步骤1: 检查并添加缺失的字段
