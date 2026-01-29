@@ -8,9 +8,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from typing import Dict, List, Optional
 from platforms.base import BasePlatform
-from core.scraper import YouTubeScraper
-from core.searcher import KeywordSearcher
-from core.analyzer import KOLAnalyzer
+from platforms.youtube.scraper import YouTubeScraper
+from platforms.youtube.searcher import KeywordSearcher
+from platforms.youtube.analyzer import KOLAnalyzer
 from utils.contact_extractor import ContactExtractor
 
 
