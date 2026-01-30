@@ -53,13 +53,15 @@ def render(project_root: str, add_log_func):
     if 'research_project_keywords' not in config['github']:
         config['github']['research_project_keywords'] = DEFAULT_CONFIG['research_project_keywords'].copy()
     
-    # 使用标签页组织配置
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "💼 商业开发者规则",
-        "🎓 学术人士规则", 
-        "🔍 搜索配置",
-        "🚫 排除规则"
-    ])
+    # 使用容器限制宽度
+    with st.container():
+        # 使用标签页组织配置
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "💼 商业开发者规则",
+            "🎓 学术人士规则", 
+            "🔍 搜索配置",
+            "🚫 排除规则"
+        ])
     
     # ==================== 标签1: 商业开发者规则 ====================
     with tab1:

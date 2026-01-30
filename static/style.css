@@ -542,37 +542,10 @@ input, select, textarea {
     font-size: 0.9rem;
 }
 
-/* Tab样式 - 优化布局 */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 0.5rem;
-    flex-wrap: nowrap;
-    width: fit-content;
-    max-width: 100%;
-}
-
+/* Tab样式 */
 .stTabs [data-baseweb="tab"] {
     padding: 0.6rem 1.2rem;
     font-weight: 500;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-/* 按钮容器优化 - 减少右侧空白 */
-.stButton {
-    width: fit-content !important;
-}
-
-/* 列布局优化 */
-[data-testid="column"] {
-    padding: 0 0.5rem !important;
-}
-
-[data-testid="column"]:first-child {
-    padding-left: 0 !important;
-}
-
-[data-testid="column"]:last-child {
-    padding-right: 0 !important;
 }
 
 /* ==================== 仪表盘大卡片样式 ==================== */

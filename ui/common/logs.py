@@ -19,12 +19,12 @@ def render_logs(check_and_fix_status_func, is_crawler_running_func, clear_logs_f
     
     crawler_is_running = is_crawler_running_func()
     
-    col1, col2, col3 = st.columns([1, 1, 1.5])
+    col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
-        if st.button("刷新日志", key="refresh_logs_btn", use_container_width=True):
+        if st.button("刷新日志", key="refresh_logs_btn"):
             st.rerun()
     with col2:
-        if st.button("清空日志", key="clear_logs_btn", use_container_width=True):
+        if st.button("清空日志", key="clear_logs_btn"):
             if clear_logs_func():
                 st.success("日志已清空")
                 time.sleep(0.5)
