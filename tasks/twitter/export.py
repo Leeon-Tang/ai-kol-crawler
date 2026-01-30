@@ -163,5 +163,9 @@ class TwitterExportTask:
     
     def __del__(self):
         """清理资源"""
-        if hasattr(self, 'db'):
-            self.db.close()
+        try:
+            if hasattr(self, 'db') and self.db and hasattr(self.db, 'conn') and self.db.conn:
+                self.db.close()
+        except:
+            pass  # 忽略清理时的错误
+

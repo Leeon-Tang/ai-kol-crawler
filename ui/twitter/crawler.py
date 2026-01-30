@@ -31,8 +31,21 @@ def render_crawler(
         st.warning(TEXTS['crawler_running'])
         st.info(TEXTS['view_logs'])
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
+            if st.button("⏹️ 立即停止", key="stop_crawler_twitter", use_container_width=True, type="primary"):
+                from utils.crawler_status import request_stop
+                request_stop()
+                # 立即更新状态为停止
+                success = set_crawler_running_func(False)
+                if success:
+                    st.success("✅ 爬虫已停止")
+                else:
+                    st.warning("⚠️ 已发送停止信号")
+                time_module.sleep(0.5)
+                st.rerun()
+        
+        with col2:
             if st.button(TEXTS['mark_complete'], key="mark_complete_twitter", use_container_width=True):
                 success = set_crawler_running_func(False)
                 if success:
@@ -42,7 +55,7 @@ def render_crawler(
                     st.error(TEXTS['reset_failed'])
                 st.rerun()
         
-        with col2:
+        with col3:
             if st.button(TEXTS['force_reset'], key="force_reset_twitter", use_container_width=True):
                 try:
                     with open(crawler_status_file, 'w', encoding='utf-8') as f:

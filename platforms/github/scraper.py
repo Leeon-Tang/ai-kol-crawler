@@ -39,15 +39,23 @@ class GitHubScraper:
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0'
         ]
         
-        self.min_delay = 3.0  # 增加到3秒
-        self.max_delay = 5.0  # 增加到5秒
+        # 从配置文件读取速率限制参数
+        from utils.config_loader import load_config
+        config = load_config()
+        rate_limit_config = config.get('github', {}).get('rate_limit', {})
+        
+        self.min_delay = rate_limit_config.get('min_delay', 4.0)
+        self.max_delay = rate_limit_config.get('max_delay', 7.0)
+        self.initial_cooldown = rate_limit_config.get('initial_cooldown', 5)
+        self.max_429_backoff = rate_limit_config.get('max_429_backoff', 30)
+        
         self.last_request_time = 0
         self.rate_limit_count = 0
         self.consecutive_429 = 0  # 连续429次数
         
-        logger.info(f"爬虫初始化（延迟3-5秒，{len(self.user_agents)}个UA）")
-        logger.info("⏳ 等待3秒让IP冷却...")
-        time.sleep(3)  # 改为3秒冷却期
+        logger.info(f"爬虫初始化（延迟{self.min_delay}-{self.max_delay}秒，{len(self.user_agents)}个UA）")
+        logger.info(f"⏳ 等待{self.initial_cooldown}秒让IP冷却...")
+        time.sleep(self.initial_cooldown)
         logger.info("✓ 冷却完成，开始爬取")
     
     def _get_headers(self):
@@ -87,13 +95,15 @@ class GitHubScraper:
             
             if response.status_code == 429:
                 self.consecutive_429 += 1
-                wait_time = min(2 ** self.consecutive_429, 5)
-                logger.warning(f"429错误（第{self.consecutive_429}次），等待{wait_time}秒...")
+                # 指数退避：2^n秒，最多使用配置的最大值
+                wait_time = min(2 ** self.consecutive_429, self.max_429_backoff)
+                logger.warning(f"⚠️ 429错误（第{self.consecutive_429}次），等待{wait_time}秒...")
                 time.sleep(wait_time)
                 
                 # 如果连续3次429，建议更长的冷却期
                 if self.consecutive_429 >= 3:
-                    logger.warning("⚠️ 连续多次429，建议稍后再试或降低爬取频率")
+                    logger.warning(f"⚠️ 连续{self.consecutive_429}次429，建议稍后再试或降低爬取频率")
+                    logger.warning(f"   当前延迟: {self.min_delay}-{self.max_delay}秒，最大退避: {self.max_429_backoff}秒")
                 
                 return self.search_repositories(keyword, max_results, sort)
             
@@ -183,6 +193,12 @@ class GitHubScraper:
     
     @retry_on_failure(max_retries=3)
     def get_user_info(self, username: str) -> Optional[Dict]:
+        # 检查停止标志
+        from utils.crawler_status import should_stop
+        if should_stop():
+            logger.debug(f"检测到停止信号，跳过获取用户信息: {username}")
+            return None
+        
         self._wait()
         
         try:
@@ -255,13 +271,8 @@ class GitHubScraper:
                 if email_match:
                     user_info['email'] = email_match.group(0)
             
-            # 方式4：如果profile没有邮箱，尝试从commit记录提取
-            if not user_info['email']:
-                logger.debug(f"Profile无邮箱，尝试从commit提取: {username}")
-                commit_email = self._extract_email_from_commits(username)
-                if commit_email:
-                    user_info['email'] = commit_email
-                    logger.info(f"✓ 从commit提取到邮箱: {commit_email}")
+            # 方式4：暂不从commit提取，留到最后判断合格后再提取
+            # 这样可以避免对不合格的开发者浪费API调用
             
             # 提取博客/网站
             blog_elem = soup.select_one('li[itemprop="url"] a[rel*="nofollow"]')
@@ -396,6 +407,12 @@ class GitHubScraper:
     
     @retry_on_failure(max_retries=3)
     def get_user_repositories(self, username: str, max_repos: int = 30) -> List[Dict]:
+        # 检查停止标志
+        from utils.crawler_status import should_stop
+        if should_stop():
+            logger.debug(f"检测到停止信号，跳过获取仓库: {username}")
+            return []
+        
         self._wait()
         
         try:
@@ -461,7 +478,7 @@ class GitHubScraper:
             return []
     
     @retry_on_failure(max_retries=3)
-    def get_repository_contributors(self, repo_full_name: str, max_contributors: int = None) -> List[str]:
+    def get_repository_contributors(self, repo_full_name: str, max_contributors: int = None) -> tuple[List[Dict], str]:
         """
         获取仓库贡献者列表（使用GitHub API）
         
@@ -473,7 +490,9 @@ class GitHubScraper:
             max_contributors: 最大获取数量，None表示不限制
             
         Returns:
-            贡献者用户名列表
+            (contributors, error_msg): 贡献者列表和错误信息
+            - 成功: ([{"username": "user1", "commits": 100, "rank": 1}, ...], "")
+            - 失败: ([], "具体错误信息")
         """
         contributors = []
         owner = repo_full_name.split('/')[0]
@@ -483,7 +502,6 @@ class GitHubScraper:
             
             # 使用GitHub的contributors-data API
             api_url = f"https://github.com/{repo_full_name}/graphs/contributors-data"
-            logger.debug(f"获取贡献者: {repo_full_name}")
             
             # 需要特殊的headers来访问这个API
             headers = self._get_headers()
@@ -492,47 +510,87 @@ class GitHubScraper:
             
             response = self.session.get(api_url, headers=headers, timeout=15)
             
-            # 检查响应状态
+            # 处理 202 状态码 - GitHub 正在异步生成数据，需要轮询等待
+            if response.status_code == 202:
+                logger.info(f"  ⏳ GitHub正在生成贡献者数据，等待中...")
+                max_retries = 10  # 最多等待10次
+                retry_count = 0
+                wait_time = 3  # 初始等待3秒
+                
+                while response.status_code == 202 and retry_count < max_retries:
+                    retry_count += 1
+                    logger.info(f"     等待 {wait_time} 秒后重试 ({retry_count}/{max_retries})...")
+                    time.sleep(wait_time)
+                    
+                    # 重新请求前也要等待（避免触发429）
+                    self._wait()
+                    
+                    # 重新请求
+                    response = self.session.get(api_url, headers=headers, timeout=15)
+                    
+                    # 如果还是202，增加等待时间（最多10秒）
+                    if response.status_code == 202:
+                        wait_time = min(wait_time + 2, 10)
+                
+                # 如果超过最大重试次数还是202
+                if response.status_code == 202:
+                    return [], f"202 - 数据生成超时（已等待{retry_count}次，约{retry_count * 5}秒）"
+                
+                # 如果成功了，记录日志
+                if response.status_code == 200:
+                    logger.info(f"  ✓ 数据已准备好（等待了{retry_count}次）")
+            
+            # 检查其他响应状态
             if response.status_code == 404:
-                logger.debug(f"仓库不存在或无贡献者数据: {repo_full_name}")
-                return []
+                return [], "404 - 仓库不存在或无贡献者数据"
             
             if response.status_code == 429:
-                logger.warning(f"速率限制: {repo_full_name}")
-                return []
+                return [], "429 - 速率限制，请稍后再试"
             
-            response.raise_for_status()
+            if response.status_code != 200:
+                return [], f"{response.status_code} - HTTP错误"
             
             # 检查响应内容类型
             content_type = response.headers.get('Content-Type', '')
             if 'application/json' not in content_type:
-                logger.debug(f"非JSON响应 ({content_type}): {repo_full_name}")
-                return []
+                return [], f"非JSON响应 (Content-Type: {content_type})"
             
             # 检查响应是否为空
             if not response.text or response.text.strip() == '':
-                logger.debug(f"空响应: {repo_full_name}")
-                return []
+                return [], "空响应 (状态码200但内容为空)"
             
             # 解析JSON数据
             try:
                 data = response.json()
             except ValueError as json_err:
-                logger.debug(f"JSON解析失败 {repo_full_name}: {json_err}")
-                return []
+                return [], f"JSON解析失败: {str(json_err)}"
             
             if not isinstance(data, list):
-                logger.debug(f"API返回数据格式错误 ({type(data).__name__}): {repo_full_name}")
-                return []
+                return [], f"数据格式错误 (期望list，实际{type(data).__name__})"
             
             if len(data) == 0:
-                logger.debug(f"无贡献者数据: {repo_full_name}")
-                return []
+                return [], "空列表 (仓库可能没有贡献者)"
             
-            logger.debug(f"API返回 {len(data)} 个贡献者")
+            logger.debug(f"API返回 {len(data)} 个贡献者数据")
             
-            # 提取用户名
+            # GitHub API 返回的是升序（贡献少的在前），需要反转为降序（贡献多的在前）
+            data.reverse()
+            logger.debug(f"已反转为降序（优先处理贡献多的开发者）")
+            
+            # 提取用户名和贡献度信息
             seen_usernames = set()
+            filtered_stats = {
+                'total': len(data),
+                'no_author': 0,
+                'no_login': 0,
+                'is_owner': 0,
+                'duplicate': 0,
+                'invalid_format': 0,
+                'valid': 0
+            }
+            
+            rank = 0  # 排名（从1开始）
+            
             for contributor_data in data:
                 # 如果设置了限制且已达到，停止
                 if max_contributors and len(contributors) >= max_contributors:
@@ -543,34 +601,58 @@ class GitHubScraper:
                 
                 author = contributor_data.get('author')
                 if not author or not isinstance(author, dict):
+                    filtered_stats['no_author'] += 1
                     continue
                 
                 username = author.get('login')
                 if not username:
+                    filtered_stats['no_login'] += 1
                     continue
                 
                 # 过滤：排除owner、去重、验证格式
-                if username and username != owner and username not in seen_usernames:
-                    if username.replace('-', '').replace('_', '').isalnum():
-                        contributors.append(username)
-                        seen_usernames.add(username)
+                if username == owner:
+                    filtered_stats['is_owner'] += 1
+                    continue
+                
+                if username in seen_usernames:
+                    filtered_stats['duplicate'] += 1
+                    continue
+                
+                if not username.replace('-', '').replace('_', '').isalnum():
+                    filtered_stats['invalid_format'] += 1
+                    logger.debug(f"过滤无效格式用户名: {username}")
+                    continue
+                
+                # 获取贡献度信息
+                rank += 1
+                total_commits = contributor_data.get('total', 0)
+                
+                contributors.append({
+                    'username': username,
+                    'commits': total_commits,
+                    'rank': rank
+                })
+                seen_usernames.add(username)
+                filtered_stats['valid'] += 1
             
-            if contributors:
-                logger.info(f"✓ 从{repo_full_name}获取{len(contributors)}个贡献者")
-            else:
-                logger.debug(f"未找到有效贡献者: {repo_full_name}")
+            logger.info(f"  📊 贡献者统计: API返回{filtered_stats['total']}个, 有效{filtered_stats['valid']}个")
+            if filtered_stats['no_author'] > 0 or filtered_stats['no_login'] > 0 or filtered_stats['invalid_format'] > 0:
+                logger.info(f"     过滤: 无author={filtered_stats['no_author']}, 无login={filtered_stats['no_login']}, "
+                          f"是owner={filtered_stats['is_owner']}, 格式无效={filtered_stats['invalid_format']}")
             
-            return contributors
+            if not contributors:
+                return [], "过滤后无有效贡献者 (可能都是owner或格式无效)"
+            
+            return contributors, ""
             
         except requests.exceptions.Timeout:
-            logger.debug(f"请求超时: {repo_full_name}")
-            return []
+            return [], "请求超时 (15秒)"
+        except requests.exceptions.ConnectionError:
+            return [], "网络连接失败"
         except requests.exceptions.RequestException as req_err:
-            logger.debug(f"请求失败 {repo_full_name}: {req_err}")
-            return []
+            return [], f"请求失败: {str(req_err)}"
         except Exception as e:
-            logger.warning(f"获取贡献者失败 {repo_full_name}: {e}")
-            return []
+            return [], f"未知错误: {type(e).__name__} - {str(e)}"
     
     def check_is_indie_developer(self, user_info: Dict, repositories: List[Dict]) -> bool:
         """

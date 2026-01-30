@@ -71,6 +71,13 @@ class GitHubDiscoveryTask:
             target_qualified=max_developers,
             max_attempts=max_attempts
         ):
+            # 检查停止标志
+            from utils.crawler_status import should_stop
+            if should_stop():
+                logger.warning("\n⚠️ 检测到停止信号，正在停止爬虫...")
+                logger.info(f"当前进度: 商业开发者 {qualified_commercial_count}/{max_developers}, 学术人士 {qualified_academic_count}")
+                break
+            
             # 检查是否已达到目标
             if qualified_commercial_count >= max_developers:
                 logger.info(f"\n✓ 已达到目标数量 {max_developers}，停止爬取")
@@ -81,7 +88,7 @@ class GitHubDiscoveryTask:
             logger.info(f"\n{'▶'*30}")
             logger.info(f"[商业: {qualified_commercial_count}/{max_developers}] [学术: {qualified_academic_count}] [已发现: {total_discovered}]")
             logger.info(f"开发者: {username}")
-            logger.info(f"来源: {source_info}")
+            logger.info(f"来源: {source_info}")  # source_info 已包含仓库进度信息
             logger.info(f"{'▶'*30}")
             
             # 检查是否在黑名单中
@@ -89,6 +96,12 @@ class GitHubDiscoveryTask:
                 logger.info(f"  🚫 开发者在黑名单中，跳过")
                 skipped_existing += 1
                 continue
+            
+            # 再次检查停止标志（在分析前）
+            from utils.crawler_status import should_stop
+            if should_stop():
+                logger.warning("\n⚠️ 检测到停止信号，立即停止")
+                break
             
             # 检查是否已存在（检查两个表）
             exists_in_commercial = self.repository.developer_exists(username)

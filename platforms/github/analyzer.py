@@ -19,6 +19,8 @@ class GitHubAnalyzer:
         """
         分析GitHub开发者，并自动分类为商业/学术
         
+        优化原则：只要满足一个不合格条件，立即返回，不再继续判断
+        
         Args:
             username: 用户名
             
@@ -27,119 +29,96 @@ class GitHubAnalyzer:
         """
         logger.info(f"开始分析开发者: {username}")
         
+        # 检查停止标志
+        from utils.crawler_status import should_stop
+        if should_stop():
+            logger.warning(f"⚠️ 检测到停止信号，跳过分析 {username}")
+            return {}
+        
         # 获取用户信息
         user_info = self.scraper.get_user_info(username)
         if not user_info:
             logger.error(f"无法获取用户 {username} 的信息")
             return {}
         
+        # 再次检查停止标志
+        if should_stop():
+            logger.warning(f"⚠️ 检测到停止信号，停止分析")
+            return {}
+        
         # 获取用户仓库
         repositories = self.scraper.get_user_repositories(username, max_repos=30)
+        
+        # 计算统计数据（所有类型都需要）
+        stats = self._calculate_stats(repositories)
         
         # 先检查是否为学术人士
         is_academic, academic_indicators, research_areas = self.scraper.check_is_academic(user_info, repositories)
         
-        # 如果是学术人士，返回学术类型
+        # 如果是学术人士
         if is_academic:
-            # 计算统计数据
-            stats = self._calculate_stats(repositories)
-            
             # 提取联系方式
             contact_info = self._extract_contact_info(user_info)
             
             # 学术人士也需要有联系方式
             if not contact_info:
-                logger.info(f"学术人士 {username} 没有任何联系方式，标记为不合格")
-                result = {
-                    'username': username,
-                    'user_id': user_info['user_id'],
-                    'name': user_info.get('name', ''),
-                    'profile_url': user_info['profile_url'],
-                    'avatar_url': user_info.get('avatar_url', ''),
-                    'bio': user_info.get('bio', ''),
-                    'company': user_info.get('company', ''),
-                    'location': user_info.get('location', ''),
-                    'blog': user_info.get('blog', ''),
-                    'twitter': user_info.get('twitter', ''),
-                    'email': user_info.get('email', ''),
-                    'contact_info': contact_info,
-                    
-                    'public_repos': user_info.get('public_repos', 0),
-                    'followers': user_info.get('followers', 0),
-                    'following': user_info.get('following', 0),
-                    
-                    'analyzed_repos': len(repositories),
-                    'total_stars': stats['total_stars'],
-                    'total_forks': stats['total_forks'],
-                    'avg_stars': stats['avg_stars'],
-                    'avg_forks': stats['avg_forks'],
-                    'top_languages': stats['top_languages'],
-                    'original_repos': stats['original_repos'],
-                    
-                    'developer_type': 'academic',
-                    'academic_indicators': academic_indicators,
-                    'research_areas': research_areas,
-                    'status': 'rejected',
-                    
-                    'created_at': user_info.get('created_at'),
-                    'updated_at': user_info.get('updated_at')
-                }
-                
-                logger.info(f"开发者 {username} 分析完成: 学术人士但无联系方式")
-                return result
+                logger.info(f"学术人士 {username} 没有联系方式，尝试从commit提取...")
+                commit_email = self.scraper._extract_email_from_commits(username)
+                if commit_email:
+                    user_info['email'] = commit_email
+                    contact_info = self._extract_contact_info(user_info)
+                    logger.info(f"✓ 从commit提取到邮箱: {commit_email}")
+                else:
+                    logger.info(f"✗ 学术人士无联系方式，不合格")
+                    # 立即返回不合格结果，不再继续
+                    return self._build_result(username, user_info, stats, repositories, 
+                                             'academic', False, contact_info,
+                                             academic_indicators=academic_indicators,
+                                             research_areas=research_areas)
             
-            result = {
-                'username': username,
-                'user_id': user_info['user_id'],
-                'name': user_info.get('name', ''),
-                'profile_url': user_info['profile_url'],
-                'avatar_url': user_info.get('avatar_url', ''),
-                'bio': user_info.get('bio', ''),
-                'company': user_info.get('company', ''),
-                'location': user_info.get('location', ''),
-                'blog': user_info.get('blog', ''),
-                'twitter': user_info.get('twitter', ''),
-                'email': user_info.get('email', ''),
-                'contact_info': contact_info,
-                
-                'public_repos': user_info.get('public_repos', 0),
-                'followers': user_info.get('followers', 0),
-                'following': user_info.get('following', 0),
-                
-                'analyzed_repos': len(repositories),
-                'total_stars': stats['total_stars'],
-                'total_forks': stats['total_forks'],
-                'avg_stars': stats['avg_stars'],
-                'avg_forks': stats['avg_forks'],
-                'top_languages': stats['top_languages'],
-                'original_repos': stats['original_repos'],
-                
-                'developer_type': 'academic',
-                'academic_indicators': academic_indicators,
-                'research_areas': research_areas,
-                'status': 'qualified',
-                
-                'created_at': user_info.get('created_at'),
-                'updated_at': user_info.get('updated_at')
-            }
-            
-            logger.info(f"开发者 {username} 分析完成: 学术人士")
-            return result
+            # 学术人士合格
+            logger.info(f"✓ {username} 学术人士合格")
+            return self._build_result(username, user_info, stats, repositories,
+                                     'academic', True, contact_info,
+                                     academic_indicators=academic_indicators,
+                                     research_areas=research_areas)
         
-        # 如果不是学术人士，检查是否为商业/独立开发者
+        # 不是学术人士，检查是否为商业/独立开发者
         is_indie = self.scraper.check_is_indie_developer(user_info, repositories)
         
-        # 计算统计数据
-        stats = self._calculate_stats(repositories)
+        # 如果影响力不足，立即返回不合格（不再检查联系方式）
+        if not is_indie:
+            logger.info(f"✗ {username} 不符合独立开发者标准，不合格")
+            return self._build_result(username, user_info, stats, repositories,
+                                     'commercial', False, '')
         
-        # 提取联系方式
+        # 影响力合格，检查联系方式
         contact_info = self._extract_contact_info(user_info)
         
-        # 如果没有任何联系方式，标记为不合格
         if not contact_info:
-            logger.info(f"开发者 {username} 没有任何联系方式，标记为不合格")
-            is_indie = False
+            logger.info(f"商业开发者 {username} 没有联系方式，尝试从commit提取...")
+            commit_email = self.scraper._extract_email_from_commits(username)
+            if commit_email:
+                user_info['email'] = commit_email
+                contact_info = self._extract_contact_info(user_info)
+                logger.info(f"✓ 从commit提取到邮箱: {commit_email}")
+            else:
+                logger.info(f"✗ 商业开发者无联系方式，不合格")
+                # 立即返回不合格结果
+                return self._build_result(username, user_info, stats, repositories,
+                                         'commercial', False, contact_info)
         
+        # 商业开发者合格
+        logger.info(f"✓ {username} 商业开发者合格")
+        return self._build_result(username, user_info, stats, repositories,
+                                 'commercial', True, contact_info)
+    
+    def _build_result(self, username: str, user_info: Dict, stats: Dict, 
+                     repositories: List[Dict], developer_type: str, 
+                     is_qualified: bool, contact_info: str,
+                     academic_indicators: List[str] = None,
+                     research_areas: List[str] = None) -> Dict:
+        """构建统一的返回结果"""
         result = {
             'username': username,
             'user_id': user_info['user_id'],
@@ -166,15 +145,21 @@ class GitHubAnalyzer:
             'top_languages': stats['top_languages'],
             'original_repos': stats['original_repos'],
             
-            'developer_type': 'commercial',
-            'is_indie_developer': is_indie,
-            'status': 'qualified' if is_indie else 'rejected',
+            'developer_type': developer_type,
+            'status': 'qualified' if is_qualified else 'rejected',
             
             'created_at': user_info.get('created_at'),
             'updated_at': user_info.get('updated_at')
         }
         
-        logger.info(f"开发者 {username} 分析完成: {'合格商业开发者' if is_indie else '不合格'}")
+        # 学术人士特有字段
+        if developer_type == 'academic':
+            result['academic_indicators'] = academic_indicators or []
+            result['research_areas'] = research_areas or []
+        else:
+            # 商业开发者特有字段
+            result['is_indie_developer'] = is_qualified
+        
         return result
     
     def _calculate_stats(self, repositories: List[Dict]) -> Dict:

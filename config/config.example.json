@@ -21,6 +21,14 @@
   "github": {
     "min_followers": 100,
     "min_stars": 500,
+    "min_repo_stars": 100,
+    "max_developers_per_run": 100,
+    "rate_limit": {
+      "min_delay": 4.0,
+      "max_delay": 7.0,
+      "initial_cooldown": 5,
+      "max_429_backoff": 30
+    },
     "academic_min_followers": 50,
     "academic_min_stars": 100,
     "search_keywords": [

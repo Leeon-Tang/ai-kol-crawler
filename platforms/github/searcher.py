@@ -23,6 +23,10 @@ class GitHubSearcher:
         github_config = self.config.get('github', {})
         self.strategy_config = github_config.get('discovery_strategy', {})
         
+        # 加载仓库星标最低要求（可配置）
+        self.min_repo_stars = github_config.get('min_repo_stars', 100)
+        logger.info(f"✓ 仓库星标最低要求: {self.min_repo_stars} stars")
+        
         # 去重缓存（根据配置决定是否启用）
         self.enable_deduplication = self.strategy_config.get('enable_deduplication', True)
         self.deduplication_scope = self.strategy_config.get('deduplication_scope', 'session')
@@ -161,7 +165,7 @@ class GitHubSearcher:
                 is_awesome = 'awesome' in keyword.lower() or (repo_name and 'awesome' in repo_name.lower())
                 
                 # 动态获取贡献者数量限制
-                if repo_name and (is_awesome or stars >= 100):
+                if repo_name and (is_awesome or stars >= self.min_repo_stars):
                     max_contrib = self._get_contributor_limit(repo_name, stars, is_awesome)
                     
                     logger.info(f"  获取项目贡献者: {repo_name} ({stars} stars, 限制{max_contrib}个)")
@@ -416,8 +420,8 @@ class GitHubSearcher:
                 repo_name = repo.get('repo_name')
                 stars = repo.get('stars', 0)
                 
-                # 项目质量过滤：至少100 stars
-                if stars < 100:
+                # 项目质量过滤：使用配置的最低星标要求
+                if stars < self.min_repo_stars:
                     logger.debug(f"  跳过低星项目: {repo_name} ({stars} stars)")
                     continue
                 
@@ -543,6 +547,12 @@ class GitHubSearcher:
         discovered_count = 0
         
         for keyword_idx, keyword in enumerate(keywords, 1):
+            # 检查停止标志
+            from utils.crawler_status import should_stop
+            if should_stop():
+                logger.warning(f"\n⚠️ 检测到停止信号，停止搜索")
+                break
+            
             if discovered_count >= max_attempts:
                 logger.info(f"已达到最大尝试次数 {max_attempts}，停止搜索")
                 break
@@ -570,57 +580,69 @@ class GitHubSearcher:
             
             # 逐个处理仓库（深度优先）
             for repo_idx, repo in enumerate(repositories, 1):
+                # 检查停止标志
+                from utils.crawler_status import should_stop
+                if should_stop():
+                    logger.warning(f"\n⚠️ 检测到停止信号，停止处理仓库")
+                    return
+                
                 if discovered_count >= max_attempts:
                     logger.info(f"\n已达到最大尝试次数，停止")
                     break
                 
                 repo_name = repo.get('repo_name')
                 stars = repo.get('stars', 0)
-                owner_username = repo.get('owner_username')
+                
+                # 过滤低星仓库（使用配置的最低星标要求）
+                if stars < self.min_repo_stars:
+                    logger.info(f"  ⊙ 仓库 [{repo_idx}/{len(repositories)}]: {repo_name} ({stars} ⭐) - 跳过低星仓库")
+                    continue
                 
                 logger.info(f"\n{'─'*60}")
                 logger.info(f"仓库 [{repo_idx}/{len(repositories)}]: {repo_name} ({stars} ⭐)")
                 logger.info(f"{'─'*60}")
                 
-                # 先返回owner
-                if owner_username and not self._is_organization(owner_username):
-                    if self._should_add_developer(owner_username):
-                        discovered_count += 1
-                        source_info = f"Owner of {repo_name}"
-                        logger.info(f"  → 返回 Owner: {owner_username}")
-                        yield (owner_username, source_info)
-                
-                # 判断是否需要获取贡献者
-                is_awesome = 'awesome' in keyword.lower() or (repo_name and 'awesome' in repo_name.lower())
-                
-                if not repo_name or (not is_awesome and stars < 100):
-                    logger.info(f"  ⊙ 跳过低星项目 ({stars} stars < 100)")
+                # 直接获取贡献者（不分析 Owner）
+                if not repo_name:
+                    logger.info(f"  ⊙ 仓库名称无效，跳过")
                     continue
                 
-                logger.info(f"  开始获取贡献者...")
+                # 打印获取贡献者的日志
+                logger.info(f"  📡 开始获取贡献者...")
                 
                 # 获取所有贡献者
-                contributors = self.scraper.get_repository_contributors(repo_name)
+                contributors, error_msg = self.scraper.get_repository_contributors(repo_name)
                 
                 if not contributors:
-                    logger.info(f"  ⊙ 无贡献者数据")
+                    logger.warning(f"  ✗ 获取贡献者失败: {error_msg}")
+                    if "202" in error_msg:
+                        logger.info(f"     说明：GitHub正在异步生成贡献者数据，这是正常现象")
+                        logger.info(f"     解决：等待几分钟后，该仓库的数据会准备好")
+                    logger.info(f"     查看：https://github.com/{repo_name}/graphs/contributors")
                     continue
                 
-                logger.info(f"  ✓ 该仓库有 {len(contributors)} 个贡献者，逐个返回...")
+                total_contributors = len(contributors)
+                logger.info(f"  ✓ 成功获取 {total_contributors} 个贡献者，逐个分析...")
                 
                 # 逐个返回贡献者（深度优先：一个仓库的所有贡献者都返回完才换下一个）
                 repo_yield_count = 0
-                for contrib_idx, contrib in enumerate(contributors, 1):
+                for contrib_idx, contrib_info in enumerate(contributors, 1):
                     if discovered_count >= max_attempts:
                         break
                     
-                    if not self._is_organization(contrib):
-                        if self._should_add_developer(contrib):
+                    username = contrib_info['username']
+                    commits = contrib_info['commits']
+                    rank = contrib_info['rank']
+                    
+                    if not self._is_organization(username):
+                        if self._should_add_developer(username):
                             discovered_count += 1
                             repo_yield_count += 1
-                            source_info = f"Contributor #{contrib_idx} of {repo_name}"
-                            logger.info(f"  → 返回贡献者 [{contrib_idx}/{len(contributors)}]: {contrib}")
-                            yield (contrib, source_info)
+                            # 显示当前仓库进度：已处理/总数
+                            remaining = total_contributors - contrib_idx
+                            source_info = f"Contributor #{rank} of {repo_name} ({commits} commits, 剩余{remaining}个)"
+                            logger.info(f"  → 返回贡献者 [{contrib_idx}/{total_contributors}]: {username} (排名#{rank}, {commits} commits, 剩余 {remaining} 个)")
+                            yield (username, source_info)
                 
                 logger.info(f"  ✓ 该仓库返回了 {repo_yield_count} 个新开发者")
                 logger.info(f"  累计已发现: {discovered_count} 个")
@@ -743,7 +765,7 @@ class GitHubSearcher:
                 # 判断是否需要获取贡献者
                 is_awesome = 'awesome' in keyword.lower() or (repo_name and 'awesome' in repo_name.lower())
                 
-                if not repo_name or (not is_awesome and stars < 100):
+                if not repo_name or (not is_awesome and stars < self.min_repo_stars):
                     logger.debug(f"  跳过低星项目: {repo_name} ({stars} stars)")
                     continue
                 

@@ -48,6 +48,13 @@ class TwitterDiscoveryTask:
         
         # 分析每个用户
         for user_dict in discovered_users:
+            # 检查停止标志
+            from utils.crawler_status import should_stop
+            if should_stop():
+                logger.warning("\n⚠️ 检测到停止信号，立即停止")
+                logger.info(f"当前进度: 已分析 {stats['analyzed']}, 合格 {stats['qualified']}")
+                break
+            
             username = user_dict['username']
             
             # 检查是否已存在
@@ -128,6 +135,13 @@ class TwitterDiscoveryTask:
         
         # 分析每个用户
         for username in discovered_users:
+            # 检查停止标志
+            from utils.crawler_status import should_stop
+            if should_stop():
+                logger.warning("\n⚠️ 检测到停止信号，立即停止")
+                logger.info(f"当前进度: 已分析 {stats['analyzed']}, 合格 {stats['qualified']}")
+                break
+            
             # 检查是否已存在
             if self.repository.user_exists(username):
                 stats['existing_users'] += 1

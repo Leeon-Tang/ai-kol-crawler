@@ -64,8 +64,18 @@ def render(project_root: str, add_log_func):
     # ==================== 标签1: 商业开发者规则 ====================
     with tab1:
         st.subheader("📊 独立开发者判断标准")
-        with st.expander("ℹ️ 什么是独立开发者？", expanded=False):
-            st.markdown(INDIE_DEVELOPER_EXPLANATION)
+        
+        st.info("""
+        **独立开发者必须同时满足以下条件：**
+        
+        1. **不属于大公司** - 不在Google、Microsoft、Meta等大公司工作
+        2. **不是项目成员** - 不是ComfyUI、Automatic1111等知名项目的团队成员
+        3. **有影响力** - Followers或总Stars达到配置的阈值
+        4. **有AI项目** - 至少有1个AI相关的原创项目
+        
+        **排除规则：**
+        - Bio或Company中标注为某项目成员（如"ComfyUI team member"）
+        """)
         
         st.divider()
         
@@ -98,11 +108,11 @@ def render(project_root: str, add_log_func):
         
         st.divider()
         
-        st.subheader("🔑 AI项目识别关键词")
-        st.caption("用于判断开发者的项目是否与AI相关")
+        st.subheader("🔑 多模态应用识别关键词")
+        st.caption("用于判断开发者的项目是否与多模态应用相关")
         
         core_ai_keywords = st.text_area(
-            "AI项目判断关键词（每行一个）",
+            "多模态应用判断关键词（每行一个）",
             value="\n".join(config['github'].get('core_ai_keywords', [])),
             height=300,
             help=HELP_TEXTS['core_ai_keywords'],
@@ -110,10 +120,12 @@ def render(project_root: str, add_log_func):
         )
         
         core_kw_count = len([k for k in core_ai_keywords.split('\n') if k.strip()])
-        st.info(f"📊 当前配置了 {core_kw_count} 个AI识别关键词")
+        st.info(f"📊 当前配置了 {core_kw_count} 个多模态应用识别关键词")
         
-        with st.expander("💡 关键词说明", expanded=False):
-            st.markdown(KEYWORDS_EXPLANATION)
+        st.divider()
+        
+        st.subheader("💡 关键词说明")
+        st.info(KEYWORDS_EXPLANATION)
     
     # ==================== 标签2: 学术人士规则 ====================
     with tab2:
@@ -133,7 +145,7 @@ def render(project_root: str, add_log_func):
         
         st.divider()
         
-        st.subheader("筛选参数")
+        st.subheader("🎯 筛选参数")
         st.caption("用于判断学术人士是否符合标准")
         
         col1, col2 = st.columns(2)
@@ -194,13 +206,42 @@ def render(project_root: str, add_log_func):
     
     # ==================== 标签3: 搜索配置 ====================
     with tab3:
+        st.subheader("⚙️ 爬取控制参数")
+        st.caption("控制爬虫的运行行为和停止条件")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            max_developers_per_run = st.number_input(
+                "每次运行最大开发者数量", 
+                min_value=10, max_value=1000,
+                value=config['github'].get('max_developers_per_run', 100), 
+                step=10,
+                help="每次运行爬虫时，最多爬取多少个合格的商业开发者。达到这个数量后会自动停止。",
+                key="max_developers_per_run"
+            )
+        
+        with col2:
+            min_repo_stars = st.number_input(
+                "仓库最低星标要求", 
+                min_value=0, max_value=1000,
+                value=config['github'].get('min_repo_stars', 100), 
+                step=10,
+                help="只爬取星标数大于等于此值的仓库的贡献者。星标越高，项目质量越好，但可能会减少候选者数量。",
+                key="min_repo_stars"
+            )
+        
+        st.info(f"📊 当前规则：每次最多爬取 {max_developers_per_run} 个开发者，只爬取 ≥ {min_repo_stars} 星的仓库")
+        
+        st.divider()
+        
         st.subheader("🔍 搜索项目关键词")
         st.caption("用于搜索GitHub项目的关键词（包括普通项目、awesome列表等）")
         
         search_keywords = st.text_area(
             "搜索关键词（每行一个）",
             value="\n".join(config['github'].get('search_keywords', DEFAULT_CONFIG.get('search_keywords', []))),
-            height=400,
+            height=300,
             help="这些关键词用于在GitHub上搜索相关项目，从而发现开发者。支持：\n- 普通关键词: stable diffusion, ComfyUI, AI tool\n- Awesome项目: awesome-generative-ai, awesome-stable-diffusion",
             key="search_keywords_input"
         )
@@ -211,9 +252,6 @@ def render(project_root: str, add_log_func):
     
     # ==================== 标签4: 排除规则 ====================
     with tab4:
-        st.subheader("🚫 排除规则")
-        st.caption("排除大公司员工、知名项目团队成员、已爬取的开发者")
-        
         st.markdown("### 🏢 排除的公司/组织和项目团队")
         st.caption("在这些公司工作或项目团队的开发者将被排除")
         
@@ -277,6 +315,10 @@ def render(project_root: str, add_log_func):
         # 学术人士参数
         config['github']['academic_min_followers'] = academic_min_followers
         config['github']['academic_min_stars'] = academic_min_stars
+        
+        # 爬取控制参数
+        config['github']['max_developers_per_run'] = max_developers_per_run
+        config['github']['min_repo_stars'] = min_repo_stars
         
         # 处理搜索关键词
         search_kw_list = [k.strip() for k in search_keywords.split('\n') if k.strip()]

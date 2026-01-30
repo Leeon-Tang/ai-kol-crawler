@@ -18,25 +18,31 @@ INDIE_DEVELOPER_EXPLANATION = """
 """
 
 KEYWORDS_EXPLANATION = """
-**核心关键词分类：**
+**多模态应用关键词分类：**
 
-**生成式AI（重点）：**
+**图像生成（核心）：**
 - stable-diffusion, diffusion-model
-- text-to-image, text-to-video
-- image-generation, video-generation
-- controlnet, animatediff
+- text-to-image, image-generation
+- controlnet, lora, checkpoint
+- midjourney, dalle, flux
 
-**机器学习/深度学习：**
-- machine-learning, deep-learning
-- pytorch, tensorflow, keras
+**视频生成（核心）：**
+- text-to-video, image-to-video
+- video-generation, animatediff
+- ai-video
 
-**LLM/NLP：**
-- gpt, llm, large-language-model
-- chatbot, transformer, bert
+**多模态模型：**
+- multimodal, vision-language
+- clip, blip, llava
+- gpt-4v, gemini-vision
 
-**计算机视觉：**
-- computer-vision, object-detection
-- image-recognition, face-recognition
+**3D生成：**
+- text-to-3d, 3d-generation
+- nerf, gaussian-splatting
+
+**应用工具：**
+- comfyui, automatic1111
+- ai-art, ai-painting
 """
 
 # ==================== 默认配置 ====================
@@ -54,19 +60,19 @@ DEFAULT_CONFIG = {
         'awesome-image-generation', 'awesome-video', 'awesome-diffusion'
     ],
     'core_ai_keywords': [
-        # 机器学习/深度学习
-        'machine-learning', 'deep-learning', 'neural-network', 'ml-model',
-        'pytorch', 'tensorflow', 'keras', 'scikit-learn',
-        # 生成式AI（重点）
-        'stable-diffusion', 'diffusion-model', 'text-to-image', 'text-to-video',
-        'image-generation', 'video-generation', 'generative-ai', 'gan',
-        'controlnet', 'animatediff',
-        # LLM/NLP
-        'gpt', 'llm', 'large-language-model', 'chatbot', 'transformer',
-        'bert', 'nlp', 'natural-language',
-        # 计算机视觉
-        'computer-vision', 'object-detection', 'image-recognition',
-        'yolo', 'opencv-ai', 'face-recognition'
+        # 图像生成（核心）
+        'stable-diffusion', 'diffusion-model', 'text-to-image', 'image-to-video',
+        'image-generation', 'video-generation', 'generative-ai',
+        'controlnet', 'animatediff', 'comfyui', 'automatic1111',
+        'midjourney', 'dalle', 'flux', 'lora', 'checkpoint',
+        'ai-art', 'ai-painting', 'ai-video',
+        # 视频生成
+        'text-to-video', 'image-to-video', 'video-generation',
+        # 多模态
+        'multimodal', 'vision-language', 'clip', 'blip', 'llava',
+        'gpt-4v', 'gemini-vision', 'image-captioning', 'visual-question-answering',
+        # 3D生成
+        'text-to-3d', '3d-generation', 'nerf', 'gaussian-splatting'
     ],
     'exclusion_companies': [
         'Google', 'Microsoft', 'Meta', 'Facebook', 'Amazon', 'Apple',
@@ -97,7 +103,7 @@ HELP_TEXTS = {
     'min_stars': "所有原创仓库的总stars数（商业开发者）",
     'academic_min_followers': "学术人士的最小粉丝数量",
     'academic_min_stars': "学术人士的最小总stars数",
-    'core_ai_keywords': "这些关键词用于判断项目是否与AI相关，包括：机器学习、生成式AI、LLM、计算机视觉等",
+    'core_ai_keywords': "这些关键词用于判断项目是否与多模态应用相关，包括：图像生成、视频生成、多模态模型、3D生成等",
     'exclusion_companies': "Company字段包含这些名称的开发者将被过滤",
     'exclusion_projects': "Bio或Company中标注为这些项目成员的开发者将被过滤",
     'exclusion_developers': "已爬取过的开发者用户名列表，避免重复爬取浪费资源（适用于数据库被删除后重新爬取的场景）",

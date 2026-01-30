@@ -17,7 +17,8 @@ def render(
     crawler_status_file,
     time_module,
     threading_module,
-    academic_repository=None
+    academic_repository=None,
+    config=None
 ):
     """
     渲染GitHub爬虫控制页面
@@ -34,8 +35,14 @@ def render(
         time_module: time模块
         threading_module: threading模块
         academic_repository: 学术人士仓库（可选）
+        config: 配置字典（可选）
     """
     st.markdown(f'<div class="main-header">{LABELS["crawler_title"]}</div>', unsafe_allow_html=True)
+    
+    # 从配置中读取默认值
+    default_max_developers = 50
+    if config and 'github' in config:
+        default_max_developers = config['github'].get('max_developers_per_run', 50)
     
     # 检查并修复状态
     check_and_fix_status_func()
@@ -46,9 +53,22 @@ def render(
         st.warning("⚠️ 爬虫正在运行中，请等待任务完成...")
         st.info("💡 切换到「📝 日志查看」页面查看实时进度")
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
-            if st.button("⏹️ 标记为已完成", key="mark_complete_github", use_container_width=True):
+            if st.button("⏹️ 立即停止", key="stop_crawler_github", use_container_width=True, type="primary"):
+                from utils.crawler_status import request_stop
+                request_stop()
+                # 立即更新状态为停止
+                success = set_crawler_running_func(False)
+                if success:
+                    st.success("✅ 爬虫已停止")
+                else:
+                    st.warning("⚠️ 已发送停止信号")
+                time_module.sleep(0.5)
+                st.rerun()
+        
+        with col2:
+            if st.button("✅ 标记为已完成", key="mark_complete_github", use_container_width=True):
                 success = set_crawler_running_func(False)
                 if success:
                     st.success("✅ 状态已重置")
@@ -57,8 +77,8 @@ def render(
                     st.error("❌ 状态重置失败")
                 st.rerun()
         
-        with col2:
-            if st.button("🔄 强制重置状态", key="force_reset_github", use_container_width=True):
+        with col3:
+            if st.button("🔄 强制重置", key="force_reset_github", use_container_width=True):
                 try:
                     # 强制写入
                     with open(crawler_status_file, 'w', encoding='utf-8') as f:
@@ -87,9 +107,9 @@ def render(
         "目标商业开发者数量",
         min_value=10,
         max_value=500,
-        value=50,
+        value=default_max_developers,
         step=10,
-        help="限制本次任务最多爬取的商业开发者数量（学术人士会额外识别）"
+        help="限制本次任务最多爬取的商业开发者数量（学术人士会额外识别）。可在「规则配置」中修改默认值。"
     )
     
     st.info("💡 使用配置文件中的搜索关键词搜索项目，自动获取owner和贡献者")
