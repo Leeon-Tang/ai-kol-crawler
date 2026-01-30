@@ -99,28 +99,29 @@ def render(project_root: str, add_log_func):
     # 渲染AI关键词配置
     st.subheader(LABELS["ai_keywords"])
     
-    tab1, tab2 = st.tabs([LABELS["core_keywords_tab"], LABELS["helper_keywords_tab"]])
+    tab1, tab2 = st.tabs(["🔍 搜索项目关键词", "✅ 判断AI项目关键词"])
     
     with tab1:
-        st.caption(CAPTIONS['core_keywords'])
+        st.caption("用于搜索GitHub项目的关键词（包括普通项目、awesome列表等）")
+        search_keywords = st.text_area(
+            "搜索关键词（每行一个）",
+            value="\n".join(config['github'].get('search_keywords', DEFAULT_CONFIG.get('search_keywords', []))),
+            height=400,
+            help="这些关键词用于在GitHub上搜索相关项目，从而发现开发者。支持：\n- 普通关键词: stable diffusion, ComfyUI, AI tool\n- Awesome项目: awesome-generative-ai, awesome-stable-diffusion"
+        )
+        st.info("💡 支持搜索普通项目和awesome列表，爬取项目owner和贡献者")
+    
+    with tab2:
+        st.caption("用于判断开发者的项目是否与AI相关")
         core_ai_keywords = st.text_area(
-            "核心关键词（每行一个）",
+            "AI项目判断关键词（每行一个）",
             value="\n".join(config['github'].get('core_ai_keywords', [])),
-            height=300,
+            height=400,
             help=HELP_TEXTS['core_ai_keywords']
         )
         
         with st.expander("💡 关键词说明", expanded=False):
             st.markdown(KEYWORDS_EXPLANATION)
-    
-    with tab2:
-        st.caption(CAPTIONS['helper_keywords'])
-        helper_keywords = st.text_area(
-            "辅助关键词（每行一个）",
-            value="\n".join(config['github'].get('helper_keywords', [])),
-            height=150,
-            help=HELP_TEXTS['helper_keywords']
-        )
     
     st.divider()
     
@@ -187,22 +188,61 @@ def render(project_root: str, add_log_func):
     
     # 保存按钮
     if st.button(LABELS["save_config"], type="primary", use_container_width=True):
+        # 收集所有配置
         config['github']['min_followers'] = min_followers
         config['github']['min_stars'] = min_stars
         config['github']['min_repos'] = min_repos
-        config['github']['core_ai_keywords'] = [k.strip() for k in core_ai_keywords.split('\n') if k.strip()]
-        config['github']['helper_keywords'] = [k.strip() for k in helper_keywords.split('\n') if k.strip()]
-        config['github']['exclusion_companies'] = [k.strip() for k in exclusion_companies.split('\n') if k.strip()]
-        config['github']['exclusion_projects'] = [k.strip() for k in exclusion_projects.split('\n') if k.strip()]
+        
+        # 处理搜索关键词
+        search_kw_list = [k.strip() for k in search_keywords.split('\n') if k.strip()]
+        config['github']['search_keywords'] = search_kw_list
+        
+        # 处理AI判断关键词
+        core_kw_list = [k.strip() for k in core_ai_keywords.split('\n') if k.strip()]
+        config['github']['core_ai_keywords'] = core_kw_list
+        
+        # 处理排除规则
+        exclusion_companies_list = [k.strip() for k in exclusion_companies.split('\n') if k.strip()]
+        config['github']['exclusion_companies'] = exclusion_companies_list
+        
+        exclusion_projects_list = [k.strip() for k in exclusion_projects.split('\n') if k.strip()]
+        config['github']['exclusion_projects'] = exclusion_projects_list
+        
         # 保存开发者黑名单（转为小写）
-        config['github']['exclusion_developers'] = [k.strip().lower() for k in exclusion_developers.split('\n') if k.strip()]
+        exclusion_dev_list = [k.strip().lower() for k in exclusion_developers.split('\n') if k.strip()]
+        config['github']['exclusion_developers'] = exclusion_dev_list
+        
+        # 清理旧字段
+        old_fields = ['search_topics', 'awesome_search_keywords', 'helper_keywords', 'keywords']
+        for field in old_fields:
+            if field in config['github']:
+                del config['github'][field]
         
         try:
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
-            st.success(LABELS["config_saved"])
-            if exclusion_dev_list:
-                st.success(f"✅ 已保存 {len(exclusion_dev_list)} 个开发者到黑名单")
+            
+            # 显示详细的保存结果
+            st.success("✅ " + LABELS["config_saved"])
+            
+            # 显示保存的内容统计
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("搜索关键词", len(search_kw_list))
+            with col2:
+                st.metric("AI判断关键词", len(core_kw_list))
+            with col3:
+                st.metric("开发者黑名单", len(exclusion_dev_list))
+            
+            # 显示其他统计
+            st.info(f"📊 排除公司: {len(exclusion_companies_list)} 个 | 排除项目: {len(exclusion_projects_list)} 个")
+            
             add_log_func("GitHub筛选规则配置已更新", "INFO")
+            add_log_func(f"  - 搜索关键词: {len(search_kw_list)} 个", "INFO")
+            add_log_func(f"  - AI判断关键词: {len(core_kw_list)} 个", "INFO")
+            add_log_func(f"  - 开发者黑名单: {len(exclusion_dev_list)} 个", "INFO")
+            
         except Exception as e:
-            st.error(f"{LABELS['config_save_failed']}: {e}")
+            st.error(f"❌ {LABELS['config_save_failed']}: {e}")
+            import traceback
+            st.code(traceback.format_exc())

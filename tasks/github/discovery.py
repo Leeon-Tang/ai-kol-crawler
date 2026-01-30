@@ -34,18 +34,16 @@ class GitHubDiscoveryTask:
         """检查开发者是否在黑名单中"""
         return username.lower() in self.exclusion_developers
     
-    def run(self, max_developers: int = 50, strategy: str = 'comprehensive'):
+    def run(self, max_developers: int = 50):
         """
         运行发现任务 - 循环爬取直到达到目标合格数量
         
         Args:
             max_developers: 目标合格开发者数量
-            strategy: 搜索策略
         """
         logger.info("=" * 60)
         logger.info("开始GitHub开发者发现任务")
         logger.info(f"目标合格数量: {max_developers} 个开发者")
-        logger.info(f"搜索策略: {strategy}")
         logger.info("使用网页爬虫（无API速率限制）")
         if self.exclusion_developers:
             logger.info(f"黑名单: {len(self.exclusion_developers)} 个开发者将被跳过")
@@ -87,11 +85,8 @@ class GitHubDiscoveryTask:
             logger.info(f"当前进度: {qualified_count}/{max_developers} 合格")
             logger.info(f"{'='*60}")
             
-            # 使用指定策略发现开发者
-            developers = self.searcher.discover_developers(
-                strategy=strategy,
-                limit=batch_size
-            )
+            # 使用统一策略发现开发者
+            developers = self.searcher.discover_developers(limit=batch_size)
             
             if not developers:
                 logger.warning("本批次未发现新开发者，可能已搜索完所有结果")
@@ -132,7 +127,7 @@ class GitHubDiscoveryTask:
                     continue
                 
                 # 保存到数据库
-                result['discovered_from'] = f'{strategy}_search'
+                result['discovered_from'] = 'search'
                 self.repository.save_developer(result)
                 
                 if result.get('is_indie_developer'):

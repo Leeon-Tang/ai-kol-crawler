@@ -52,6 +52,41 @@
     "min_followers": 5,
     "min_original_repos": 2
   },
+  "twitter": {
+    "search_keywords": [
+      "AI",
+      "ChatGPT",
+      "GPT-4",
+      "Claude",
+      "Gemini",
+      "Midjourney",
+      "Stable Diffusion",
+      "DALL-E",
+      "Sora",
+      "AI video",
+      "generative AI",
+      "machine learning",
+      "deep learning",
+      "LLM",
+      "AI tools",
+      "AI tutorial"
+    ],
+    "hashtags": [
+      "AI",
+      "ArtificialIntelligence",
+      "MachineLearning",
+      "DeepLearning",
+      "GenerativeAI",
+      "ChatGPT",
+      "AIArt",
+      "AITools",
+      "TechAI"
+    ],
+    "min_followers": 1000,
+    "min_tweets": 50,
+    "ai_ratio_threshold": 0.3,
+    "sample_tweet_count": 20
+  },
   "engagement": {
     "like_weight": 0.4,
     "comment_weight": 0.6

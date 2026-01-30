@@ -26,7 +26,7 @@ LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
 # 页面配置
 st.set_page_config(
     page_title="多平台爬虫系统",
-    page_icon="🤖",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -141,6 +141,8 @@ def init_session_state():
         st.session_state.youtube_repository = None
     if 'github_repository' not in st.session_state:
         st.session_state.github_repository = None
+    if 'twitter_repository' not in st.session_state:
+        st.session_state.twitter_repository = None
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "youtube_dashboard"
     if 'jump_to_logs' not in st.session_state:
@@ -155,6 +157,7 @@ def connect_database():
             from storage.database import Database
             from storage.repositories.youtube_repository import YouTubeRepository
             from storage.repositories.github_repository import GitHubRepository
+            from storage.repositories.twitter_repository import TwitterRepository
             
             db = Database()
             db.connect()
@@ -181,6 +184,7 @@ def connect_database():
             st.session_state.db = db
             st.session_state.youtube_repository = YouTubeRepository(db)
             st.session_state.github_repository = GitHubRepository(db)
+            st.session_state.twitter_repository = TwitterRepository(db)
             return True
     except Exception as e:
         st.error(f"数据库连接失败: {str(e)}")
@@ -200,6 +204,11 @@ def get_statistics(platform='youtube'):
             return st.session_state.github_repository.get_statistics()
         except:
             return {'total_developers': 0, 'qualified_developers': 0, 'pending_developers': 0, 'total_repositories': 0}
+    elif platform == 'twitter' and st.session_state.twitter_repository:
+        try:
+            return st.session_state.twitter_repository.get_statistics()
+        except:
+            return {'total_users': 0, 'qualified_users': 0, 'pending_users': 0, 'total_tweets': 0}
     return {}
 
 def clear_logs():
@@ -294,8 +303,7 @@ def run_github_crawler_task(task_type, repository, **kwargs):
         if task_type == "discovery":
             task = GitHubDiscoveryTask(searcher, analyzer, repository)
             max_developers = kwargs.get('max_developers', 50)
-            strategy = kwargs.get('strategy', 'comprehensive')
-            task.run(max_developers=max_developers, strategy=strategy)
+            task.run(max_developers=max_developers)
         
         add_log(f"GitHub任务完成: {task_type}", "SUCCESS")
         add_log("正在更新爬虫状态...", "INFO")
@@ -323,11 +331,74 @@ def run_github_crawler_task(task_type, repository, **kwargs):
             except:
                 pass
 
+def run_twitter_crawler_task(task_type, repository, **kwargs):
+    """运行Twitter爬虫任务"""
+    task = None
+    try:
+        from tasks.twitter.discovery import TwitterDiscoveryTask
+        
+        set_crawler_running(True)
+        add_log(f"开始执行Twitter任务: {task_type}", "INFO")
+        
+        task = TwitterDiscoveryTask()
+        
+        if task_type == "keyword_discovery":
+            keyword_count = kwargs.get('keyword_count', 5)
+            max_users_per_keyword = kwargs.get('max_users_per_keyword', 10)
+            add_log(f"使用 {keyword_count} 个关键词进行搜索", "INFO")
+            
+            # 从配置文件读取关键词
+            from utils.config_loader import load_config
+            config = load_config()
+            keywords = config.get('twitter', {}).get('search_keywords', [])[:keyword_count]
+            
+            stats = task.discover_by_keywords(keywords, max_results_per_keyword=max_users_per_keyword)
+            add_log(f"关键词发现完成: 发现 {stats['total_discovered']} 个用户，合格 {stats['qualified']} 个", "SUCCESS")
+            
+        elif task_type == "hashtag_discovery":
+            hashtag_count = kwargs.get('hashtag_count', 3)
+            max_users = kwargs.get('max_users', 20)
+            add_log(f"使用 {hashtag_count} 个话题标签进行搜索", "INFO")
+            
+            # 从配置文件读取话题标签
+            from utils.config_loader import load_config
+            config = load_config()
+            hashtags = config.get('twitter', {}).get('hashtags', [])[:hashtag_count]
+            
+            stats = task.discover_by_hashtags(hashtags, max_results=max_users)
+            add_log(f"话题发现完成: 发现 {stats['total_discovered']} 个用户，合格 {stats['qualified']} 个", "SUCCESS")
+        
+        add_log(f"Twitter任务完成: {task_type}", "SUCCESS")
+        add_log("正在更新爬虫状态...", "INFO")
+        
+    except KeyboardInterrupt:
+        add_log("任务被用户中断", "WARNING")
+    except Exception as e:
+        add_log(f"Twitter任务执行失败: {str(e)}", "ERROR")
+        add_log(traceback.format_exc(), "ERROR")
+    finally:
+        # 确保状态一定会被更新
+        try:
+            add_log("任务结束，正在停止爬虫...", "INFO")
+            success = set_crawler_running(False)
+            if success:
+                add_log("爬虫已停止", "SUCCESS")
+            else:
+                add_log("警告：爬虫状态更新可能失败，请手动点击「标记为已完成」", "WARNING")
+        except Exception as e:
+            add_log(f"停止爬虫时出错: {str(e)}", "ERROR")
+            # 强制写入
+            try:
+                with open(CRAWLER_STATUS_FILE, 'w', encoding='utf-8') as f:
+                    f.write("stopped")
+            except:
+                pass
+
 
 
 def render_youtube_dashboard():
     """渲染YouTube仪表盘"""
-    st.markdown('<div class="main-header">📊 YouTube 数据概览</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">YouTube 数据概览</div>', unsafe_allow_html=True)
     
     stats = get_statistics('youtube')
     
@@ -379,7 +450,7 @@ def render_youtube_dashboard():
 
 def render_github_dashboard():
     """渲染GitHub仪表盘"""
-    st.markdown('<div class="main-header">📊 GitHub 数据概览</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">GitHub 数据概览</div>', unsafe_allow_html=True)
     
     stats = get_statistics('github')
     
@@ -441,49 +512,111 @@ def render_github_dashboard():
         </div>
         """, unsafe_allow_html=True)
 
+def render_twitter_dashboard():
+    """渲染Twitter仪表盘"""
+    st.markdown('<div class="main-header">Twitter/X 数据概览</div>', unsafe_allow_html=True)
+    
+    stats = get_statistics('twitter')
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"""
+        <div class="big-metric-card">
+            <div class="metric-label">总用户数</div>
+            <div class="metric-value">{stats.get('total_users', 0)}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="big-metric-card highlight">
+            <div class="metric-label">合格用户</div>
+            <div class="metric-value">{stats.get('qualified_users', 0)}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div class="big-metric-card">
+            <div class="metric-label">待分析</div>
+            <div class="metric-value">{stats.get('pending_users', 0)}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"""
+        <div class="medium-metric-card">
+            <div class="metric-label">总推文数</div>
+            <div class="metric-value-medium">{stats.get('total_tweets', 0):,}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        ai_tweets = stats.get('ai_tweets', 0)
+        total_tweets = max(stats.get('total_tweets', 1), 1)
+        ai_rate = (ai_tweets / total_tweets * 100)
+        st.markdown(f"""
+        <div class="medium-metric-card">
+            <div class="metric-label">AI推文占比</div>
+            <div class="metric-value-medium">{ai_rate:.1f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        avg_score = stats.get('avg_quality_score', 0)
+        st.markdown(f"""
+        <div class="medium-metric-card">
+            <div class="metric-label">平均质量分</div>
+            <div class="metric-value-medium">{avg_score:.1f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
 def render_youtube_crawler():
     """渲染YouTube爬虫控制"""
-    st.markdown('<div class="main-header">🚀 YouTube 爬虫控制</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">YouTube 爬虫控制</div>', unsafe_allow_html=True)
     
     # 检查并修复状态
     check_and_fix_crawler_status()
     
     running = is_crawler_running()
     if running:
-        st.warning("⚠️ 爬虫正在运行中，请等待任务完成...")
-        st.info("💡 切换到「📝 日志查看」页面查看实时进度")
+        st.warning("爬虫正在运行中，请等待任务完成...")
+        st.info("切换到「日志查看」页面查看实时进度")
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("⏹️ 标记为已完成", key="mark_complete", use_container_width=True):
+            if st.button("标记为已完成", key="mark_complete", use_container_width=True):
                 success = set_crawler_running(False)
                 if success:
-                    st.success("✅ 状态已重置")
+                    st.success("状态已重置")
                     time.sleep(0.5)
                 else:
-                    st.error("❌ 状态重置失败")
+                    st.error("状态重置失败")
                 st.rerun()
         
         with col2:
-            if st.button("🔄 强制重置状态", key="force_reset", use_container_width=True):
+            if st.button("强制重置状态", key="force_reset", use_container_width=True):
                 try:
                     # 强制写入
                     with open(CRAWLER_STATUS_FILE, 'w', encoding='utf-8') as f:
                         f.write("stopped")
-                    st.success("✅ 已强制重置")
+                    st.success("已强制重置")
                     time.sleep(0.5)
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ 强制重置失败: {e}")
+                    st.error(f"强制重置失败: {e}")
     else:
-        st.success("✅ 爬虫空闲，可以启动新任务")
+        st.success("爬虫空闲，可以启动新任务")
     
     st.divider()
     
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.subheader("🔍 初始发现任务")
+        st.subheader("初始发现任务")
         st.write("通过关键词搜索YouTube，发现新的AI KOL")
         
         keyword_limit = st.slider(
@@ -497,7 +630,7 @@ def render_youtube_crawler():
         
         st.info(f"预计搜索 {keyword_limit * 5} 个频道，耗时约 {keyword_limit * 2} 分钟")
         
-        if st.button("▶️ 开始初始发现", disabled=running, key="start_youtube_discovery"):
+        if st.button("开始初始发现", disabled=running, key="start_youtube_discovery"):
                 if not st.session_state.youtube_repository:
                     st.error("数据库未连接，无法启动任务")
                 else:
@@ -521,7 +654,7 @@ def render_youtube_crawler():
                     st.rerun()
     
     with col2:
-        st.subheader("🌐 扩散发现任务")
+        st.subheader("扩散发现任务")
         st.write("从已有KOL的推荐列表中发现新KOL")
         
         stats = get_statistics('youtube')
@@ -530,7 +663,7 @@ def render_youtube_crawler():
         if stats.get('pending_expansions', 0) == 0:
             st.warning("扩散队列为空，请先运行初始发现任务")
         
-        if st.button("▶️ 开始扩散发现", disabled=running or stats.get('pending_expansions', 0) == 0, key="start_youtube_expand"):
+        if st.button("开始扩散发现", disabled=running or stats.get('pending_expansions', 0) == 0, key="start_youtube_expand"):
                 if not st.session_state.youtube_repository:
                     st.error("数据库未连接，无法启动任务")
                 else:
@@ -554,7 +687,7 @@ def render_youtube_crawler():
     
     st.divider()
     
-    with st.expander("⚙️ 高级配置", expanded=False):
+    with st.expander("高级配置", expanded=False):
         st.subheader("爬虫参数设置")
         col1, col2 = st.columns(2)
         with col1:
@@ -563,7 +696,7 @@ def render_youtube_crawler():
         with col2:
             rate_limit = st.number_input("请求间隔(秒)", min_value=1, max_value=10, value=2, step=1)
             max_kols = st.number_input("最大KOL数量", min_value=100, max_value=10000, value=1000, step=100)
-        if st.button("💾 保存配置"):
+        if st.button("保存配置"):
             st.success("配置已保存！")
 
 def render_github_crawler():
@@ -582,33 +715,58 @@ def render_github_crawler():
         threading_module=threading
     )
 
+def render_twitter_crawler():
+    """渲染Twitter爬虫控制"""
+    from ui.twitter import render_crawler
+    render_crawler(
+        is_crawler_running_func=is_crawler_running,
+        check_and_fix_status_func=check_and_fix_crawler_status,
+        set_crawler_running_func=set_crawler_running,
+        clear_logs_func=clear_logs,
+        add_log_func=add_log,
+        run_crawler_task_func=run_twitter_crawler_task,
+        session_state=st.session_state,
+        crawler_status_file=CRAWLER_STATUS_FILE,
+        time_module=time,
+        threading_module=threading
+    )
+
 def render_data_browser():
     """渲染统一的数据浏览页面"""
-    st.markdown('<div class="main-header">📋 数据浏览</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">数据浏览</div>', unsafe_allow_html=True)
     
     # 初始化平台选择
     if 'data_browser_platform' not in st.session_state:
         st.session_state.data_browser_platform = "YouTube"
     
     # 平台选择 - 使用按钮组
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("🎥 YouTube", key="btn_yt_data", use_container_width=True, 
+        if st.button("YouTube", key="btn_yt_data", use_container_width=True, 
                     type="primary" if st.session_state.data_browser_platform == "YouTube" else "secondary"):
             st.session_state.data_browser_platform = "YouTube"
             st.rerun()
     with col2:
-        if st.button("💻 GitHub", key="btn_gh_data", use_container_width=True,
+        if st.button("GitHub", key="btn_gh_data", use_container_width=True,
                     type="primary" if st.session_state.data_browser_platform == "GitHub" else "secondary"):
             st.session_state.data_browser_platform = "GitHub"
             st.rerun()
+    # Twitter 数据浏览暂时禁用(功能未完善)
+    # with col3:
+    #     if st.button("Twitter/X", key="btn_tw_data", use_container_width=True,
+    #                 type="primary" if st.session_state.data_browser_platform == "Twitter" else "secondary"):
+    #         st.session_state.data_browser_platform = "Twitter"
+    #         st.rerun()
     
     st.divider()
     
     if st.session_state.data_browser_platform == "YouTube":
         render_youtube_data_content()
-    else:
+    elif st.session_state.data_browser_platform == "GitHub":
         render_github_data_content()
+    # Twitter 数据内容暂时禁用(功能未完善)
+    # else:
+    #     render_twitter_data_content()
 
 def render_youtube_data_content():
     """渲染YouTube数据内容"""
@@ -635,16 +793,16 @@ def render_youtube_data_content():
     try:
         kols = st.session_state.db.fetchall(query)
     except Exception as e:
-        st.error(f"❌ 数据库查询失败: {str(e)}")
+        st.error(f"数据库查询失败: {str(e)}")
         add_log(f"YouTube数据查询失败: {str(e)}", "ERROR")
         
         # 提供修复选项
-        if st.button("🔧 尝试修复数据库", key="repair_db_yt"):
+        if st.button("尝试修复数据库", key="repair_db_yt"):
             if st.session_state.db.repair_database():
-                st.success("✅ 数据库修复成功，请刷新页面")
+                st.success("数据库修复成功，请刷新页面")
                 add_log("数据库修复成功", "SUCCESS")
             else:
-                st.error("❌ 数据库修复失败")
+                st.error("数据库修复失败")
                 add_log("数据库修复失败", "ERROR")
         return
     
@@ -691,7 +849,7 @@ def render_youtube_data_content():
         
         with col1:
             # 导出所有数据
-            if st.button("📥 导出所有数据", key="export_yt_all_data", use_container_width=True):
+            if st.button("导出所有数据", key="export_yt_all_data", use_container_width=True):
                 try:
                     from tasks.youtube.export import YouTubeExportTask
                     export_task = YouTubeExportTask(st.session_state.youtube_repository)
@@ -700,7 +858,7 @@ def render_youtube_data_content():
                         with open(filepath, 'rb') as f:
                             excel_data = f.read()
                         st.download_button(
-                            label="💾 下载Excel文件",
+                            label="下载Excel文件",
                             data=excel_data,
                             file_name=os.path.basename(filepath),
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -709,7 +867,7 @@ def render_youtube_data_content():
                         )
                         add_log(f"导出Excel成功: {filepath}", "SUCCESS")
                 except Exception as e:
-                    st.error(f"❌ 导出失败: {str(e)}")
+                    st.error(f"导出失败: {str(e)}")
                     add_log(f"导出Excel失败: {str(e)}", "ERROR")
         
         with col2:
@@ -718,7 +876,7 @@ def render_youtube_data_content():
             beijing_time = datetime.now(timezone.utc) + timedelta(hours=8)
             today_str = beijing_time.strftime('%Y-%m-%d')
             
-            if st.button(f"📅 导出今日数据 ({today_str})", key="export_yt_today_data", use_container_width=True):
+            if st.button(f"导出今日数据 ({today_str})", key="export_yt_today_data", use_container_width=True):
                 try:
                     from tasks.youtube.export import YouTubeExportTask
                     export_task = YouTubeExportTask(st.session_state.youtube_repository)
@@ -733,7 +891,7 @@ def render_youtube_data_content():
                         with open(filepath, 'rb') as f:
                             excel_data = f.read()
                         st.download_button(
-                            label="💾 下载今日Excel文件",
+                            label="下载今日Excel文件",
                             data=excel_data,
                             file_name=os.path.basename(filepath),
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -744,10 +902,10 @@ def render_youtube_data_content():
                     else:
                         st.warning("今天暂无数据")
                 except Exception as e:
-                    st.error(f"❌ 导出失败: {str(e)}")
+                    st.error(f"导出失败: {str(e)}")
                     add_log(f"导出今日Excel失败: {str(e)}", "ERROR")
     else:
-        st.info("📭 暂无数据")
+        st.info("暂无数据")
 
 def render_github_data_content():
     """渲染GitHub数据内容"""
@@ -774,16 +932,16 @@ def render_github_data_content():
     try:
         devs = st.session_state.db.fetchall(query)
     except Exception as e:
-        st.error(f"❌ 数据库查询失败: {str(e)}")
+        st.error(f"数据库查询失败: {str(e)}")
         add_log(f"GitHub数据查询失败: {str(e)}", "ERROR")
         
         # 提供修复选项
-        if st.button("🔧 尝试修复数据库", key="repair_db_gh"):
+        if st.button("尝试修复数据库", key="repair_db_gh"):
             if st.session_state.db.repair_database():
-                st.success("✅ 数据库修复成功，请刷新页面")
+                st.success("数据库修复成功，请刷新页面")
                 add_log("数据库修复成功", "SUCCESS")
             else:
-                st.error("❌ 数据库修复失败")
+                st.error("数据库修复失败")
                 add_log("数据库修复失败", "ERROR")
         return
     
@@ -823,7 +981,7 @@ def render_github_data_content():
         
         with col1:
             # 导出所有数据
-            if st.button("📥 导出所有数据", key="export_gh_all_data", use_container_width=True):
+            if st.button("导出所有数据", key="export_gh_all_data", use_container_width=True):
                 try:
                     from tasks.github.export import GitHubExportTask
                     export_task = GitHubExportTask(st.session_state.github_repository)
@@ -832,7 +990,7 @@ def render_github_data_content():
                         with open(filepath, 'rb') as f:
                             excel_data = f.read()
                         st.download_button(
-                            label="💾 下载Excel文件",
+                            label="下载Excel文件",
                             data=excel_data,
                             file_name=os.path.basename(filepath),
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -841,7 +999,7 @@ def render_github_data_content():
                         )
                         add_log(f"导出Excel成功: {filepath}", "SUCCESS")
                 except Exception as e:
-                    st.error(f"❌ 导出失败: {str(e)}")
+                    st.error(f"导出失败: {str(e)}")
                     add_log(f"导出Excel失败: {str(e)}", "ERROR")
         
         with col2:
@@ -850,7 +1008,7 @@ def render_github_data_content():
             beijing_time = datetime.now(timezone.utc) + timedelta(hours=8)
             today_str = beijing_time.strftime('%Y-%m-%d')
             
-            if st.button(f"📅 导出今日数据 ({today_str})", key="export_gh_today_data", use_container_width=True):
+            if st.button(f"导出今日数据 ({today_str})", key="export_gh_today_data", use_container_width=True):
                 try:
                     from tasks.github.export import GitHubExportTask
                     export_task = GitHubExportTask(st.session_state.github_repository)
@@ -865,7 +1023,7 @@ def render_github_data_content():
                         with open(filepath, 'rb') as f:
                             excel_data = f.read()
                         st.download_button(
-                            label="💾 下载今日Excel文件",
+                            label="下载今日Excel文件",
                             data=excel_data,
                             file_name=os.path.basename(filepath),
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -876,14 +1034,137 @@ def render_github_data_content():
                     else:
                         st.warning("今天暂无数据")
                 except Exception as e:
-                    st.error(f"❌ 导出失败: {str(e)}")
+                    st.error(f"导出失败: {str(e)}")
                     add_log(f"导出今日Excel失败: {str(e)}", "ERROR")
     else:
-        st.info("📭 暂无数据")
+        st.info("暂无数据")
+
+def render_twitter_data_content():
+    """渲染Twitter数据内容"""
+    if not st.session_state.twitter_repository:
+        st.warning("请先连接数据库")
+        return
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        status_filter = st.selectbox("状态筛选", ["全部", "合格", "待分析"], index=1, key="tw_status")
+    with col2:
+        sort_by = st.selectbox("排序方式", ["爬取时间", "质量分数", "粉丝数", "推文数"], index=0, key="tw_sort")
+    with col3:
+        limit = st.number_input("显示数量", min_value=10, max_value=1000, value=50, step=10, key="tw_limit")
+    
+    status_map = {"全部": None, "合格": "qualified", "待分析": "pending"}
+    sort_map = {"爬取时间": "discovered_at DESC", "质量分数": "quality_score DESC", "粉丝数": "followers_count DESC", "推文数": "tweet_count DESC"}
+    
+    query = "SELECT * FROM twitter_users"
+    if status_filter != "全部":
+        query += f" WHERE status = '{status_map[status_filter]}'"
+    query += f" ORDER BY {sort_map[sort_by]} LIMIT {limit}"
+    
+    try:
+        users = st.session_state.db.fetchall(query)
+    except Exception as e:
+        st.error(f"数据库查询失败: {str(e)}")
+        add_log(f"Twitter数据查询失败: {str(e)}", "ERROR")
+        
+        # 提供修复选项
+        if st.button("尝试修复数据库", key="repair_db_tw"):
+            if st.session_state.db.repair_database():
+                st.success("数据库修复成功，请刷新页面")
+                add_log("数据库修复成功", "SUCCESS")
+            else:
+                st.error("数据库修复失败")
+                add_log("数据库修复失败", "ERROR")
+        return
+    
+    if users:
+        df = pd.DataFrame(users)
+        display_columns = ['username', 'name', 'followers_count', 'tweet_count', 'ai_ratio', 
+                         'quality_score', 'avg_engagement', 'verified', 'contact_info', 'status', 'discovered_at']
+        display_df = df[display_columns].copy()
+        display_df.columns = ['用户名', '姓名', '粉丝数', '推文数', 'AI相关度', '质量分数', '平均互动', '认证', '联系方式', '状态', '爬取时间']
+        
+        display_df['粉丝数'] = display_df['粉丝数'].apply(lambda x: f"{x:,}")
+        display_df['推文数'] = display_df['推文数'].apply(lambda x: f"{x:,}")
+        display_df['AI相关度'] = display_df['AI相关度'].apply(lambda x: f"{x*100:.1f}%")
+        display_df['质量分数'] = display_df['质量分数'].apply(lambda x: f"{x:.1f}")
+        display_df['平均互动'] = display_df['平均互动'].apply(lambda x: f"{x:.1f}")
+        display_df['认证'] = display_df['认证'].apply(lambda x: '已认证' if x == 1 else '未认证')
+        display_df['联系方式'] = display_df['联系方式'].fillna('')
+        
+        # 时间格式化
+        def format_time(dt):
+            if pd.isna(dt):
+                return ""
+            if isinstance(dt, str):
+                try:
+                    dt = pd.to_datetime(dt)
+                    return dt.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    return dt
+            return dt.strftime('%Y-%m-%d %H:%M:%S')
+        
+        display_df['爬取时间'] = display_df['爬取时间'].apply(format_time)
+        
+        table_height = min(max(len(display_df) * 35 + 50, 200), 800)
+        st.dataframe(display_df, width='stretch', hide_index=True, height=table_height)
+        
+        st.divider()
+        
+        # 导出按钮区域
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # 导出所有数据
+            if st.button("导出所有数据", key="export_tw_all_data", use_container_width=True):
+                try:
+                    from tasks.twitter.export import TwitterExportTask
+                    export_task = TwitterExportTask()
+                    filepath = export_task.export_qualified_users(limit=1000)
+                    if filepath and os.path.exists(filepath):
+                        with open(filepath, 'rb') as f:
+                            excel_data = f.read()
+                        st.download_button(
+                            label="下载Excel文件",
+                            data=excel_data,
+                            file_name=os.path.basename(filepath),
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="download_tw_all_excel_file"
+                        )
+                        add_log(f"导出Excel成功: {filepath}", "SUCCESS")
+                except Exception as e:
+                    st.error(f"导出失败: {str(e)}")
+                    add_log(f"导出Excel失败: {str(e)}", "ERROR")
+        
+        with col2:
+            # 导出CSV
+            if st.button("导出CSV", key="export_tw_csv", use_container_width=True):
+                try:
+                    from tasks.twitter.export import TwitterExportTask
+                    export_task = TwitterExportTask()
+                    filepath = export_task.export_all_users_csv()
+                    if filepath and os.path.exists(filepath):
+                        with open(filepath, 'rb') as f:
+                            csv_data = f.read()
+                        st.download_button(
+                            label="下载CSV文件",
+                            data=csv_data,
+                            file_name=os.path.basename(filepath),
+                            mime="text/csv",
+                            use_container_width=True,
+                            key="download_tw_csv_file"
+                        )
+                        add_log(f"导出CSV成功: {filepath}", "SUCCESS")
+                except Exception as e:
+                    st.error(f"导出失败: {str(e)}")
+                    add_log(f"导出CSV失败: {str(e)}", "ERROR")
+    else:
+        st.info("暂无数据")
 
 def render_logs():
     """渲染日志查看页面"""
-    st.markdown('<div class="main-header">📝 实时日志</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">实时日志</div>', unsafe_allow_html=True)
     
     # 检查并修复状态
     check_and_fix_crawler_status()
@@ -895,16 +1176,16 @@ def render_logs():
     
     col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
-        if st.button("🔄 刷新日志", key="refresh_logs_btn"):
+        if st.button("刷新日志", key="refresh_logs_btn"):
             st.rerun()
     with col2:
-        if st.button("🗑️ 清空日志", key="clear_logs_btn"):
+        if st.button("清空日志", key="clear_logs_btn"):
             if clear_logs():
-                st.success("✅ 日志已清空")
+                st.success("日志已清空")
                 time.sleep(0.5)
                 st.rerun()
             else:
-                st.error("❌ 清空日志失败")
+                st.error("清空日志失败")
     with col3:
         auto_refresh = st.checkbox("自动刷新 (每3秒)", value=st.session_state.auto_refresh_enabled,
                                    key="auto_refresh_checkbox_unique", help="爬虫运行时自动刷新日志")
@@ -945,7 +1226,7 @@ def render_logs():
                     <div style="width: 12px; height: 12px; background: #22c55e; 
                                 border-radius: 50%; margin-right: 10px;"></div>
                     <span style="color: white; font-size: 18px; font-weight: bold;">
-                        🔄 爬虫运行中...
+                        爬虫运行中...
                     </span>
                 </div>
                 <span style="color: #e0e7ff; font-size: 14px;">
@@ -961,7 +1242,7 @@ def render_logs():
             <div style="display: flex; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center;">
                     <span style="color: white; font-size: 18px; font-weight: bold;">
-                        ✅ 爬虫已停止
+                        爬虫已停止
                     </span>
                 </div>
                 <span style="color: #d1fae5; font-size: 14px;">
@@ -1009,15 +1290,15 @@ def render_github_rules():
 
 def render_settings():
     """渲染设置页面"""
-    st.markdown('<div class="main-header">⚙️ 系统设置</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">系统设置</div>', unsafe_allow_html=True)
     
-    st.subheader("🗄️ 数据库信息")
-    st.info("💡 当前使用SQLite数据库，数据保存在 data/ai_kol_crawler.db")
+    st.subheader("数据库信息")
+    st.info("当前使用SQLite数据库，数据保存在 data/ai_kol_crawler.db")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("📊 查看数据库大小", use_container_width=True):
+        if st.button("查看数据库大小", use_container_width=True):
             db_path = 'data/ai_kol_crawler.db'
             if os.path.exists(db_path):
                 size = os.path.getsize(db_path) / 1024 / 1024
@@ -1026,7 +1307,7 @@ def render_settings():
                 st.warning("数据库文件不存在")
     
     with col2:
-        if st.button("💾 备份数据库", use_container_width=True):
+        if st.button("备份数据库", use_container_width=True):
             import shutil
             from datetime import datetime, timedelta, timezone
             try:
@@ -1035,26 +1316,26 @@ def render_settings():
                 beijing_time = datetime.now(timezone.utc) + timedelta(hours=8)
                 backup_name = f"{backup_dir}/backup_{beijing_time.strftime('%Y%m%d_%H%M%S')}.db"
                 shutil.copy('data/ai_kol_crawler.db', backup_name)
-                st.success(f"✅ 备份成功: {backup_name}")
+                st.success(f"备份成功: {backup_name}")
             except Exception as e:
-                st.error(f"❌ 备份失败: {e}")
+                st.error(f"备份失败: {e}")
     
     with col3:
         if st.button("修复数据库", use_container_width=True):
             if st.session_state.db:
                 with st.spinner("正在修复数据库..."):
                     if st.session_state.db.repair_database():
-                        st.success("✅ 数据库修复成功")
+                        st.success("数据库修复成功")
                         add_log("数据库修复成功", "SUCCESS")
                     else:
-                        st.error("❌ 数据库修复失败")
+                        st.error("数据库修复失败")
                         add_log("数据库修复失败", "ERROR")
             else:
                 st.warning("数据库未连接")
     
     st.divider()
     
-    st.subheader("ℹ️ 系统信息")
+    st.subheader("系统信息")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -1067,8 +1348,10 @@ def render_settings():
         st.write("**统计信息**")
         youtube_stats = get_statistics('youtube')
         github_stats = get_statistics('github')
+        twitter_stats = get_statistics('twitter')
         st.write(f"- YouTube KOL: {youtube_stats.get('qualified_kols', 0)}")
         st.write(f"- GitHub开发者: {github_stats.get('qualified_developers', 0)}")
+        st.write(f"- Twitter用户: {twitter_stats.get('qualified_users', 0)}")
 
 
 if __name__ == "__main__":
@@ -1076,31 +1359,35 @@ if __name__ == "__main__":
     init_session_state()
     
     with st.sidebar:
-        st.markdown("### 🤖 多平台爬虫")
+        st.markdown("### 多平台爬虫")
         
         if connect_database():
-            st.success("✅ 已连接")
+            st.success("已连接")
         else:
-            st.error("❌ 未连接")
+            st.error("未连接")
         
         # 快速统计 - 更紧凑
         youtube_stats = get_statistics('youtube')
         github_stats = get_statistics('github')
+        # twitter_stats = get_statistics('twitter')  # 暂时禁用
         
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("**🎥 YouTube**")
+            st.markdown("**YouTube**")
             st.markdown(f"<div class='stat-number'>{youtube_stats.get('qualified_kols', 0)}</div>", unsafe_allow_html=True)
         with col2:
-            st.markdown("**💻 GitHub**")
+            st.markdown("**GitHub**")
             st.markdown(f"<div class='stat-number'>{github_stats.get('qualified_developers', 0)}</div>", unsafe_allow_html=True)
+        # with col3:
+        #     st.markdown("**Twitter**")
+        #     st.markdown(f"<div class='stat-number'>{twitter_stats.get('qualified_users', 0)}</div>", unsafe_allow_html=True)
         
         st.divider()
         
         # 数据浏览（最前面）
         is_active = st.session_state.current_page == "data_browser"
         if st.button(
-            "📊 数据浏览", 
+            "数据浏览", 
             key="btn_data_browser", 
             use_container_width=True,
             type="primary" if is_active else "secondary"
@@ -1109,11 +1396,11 @@ if __name__ == "__main__":
             st.rerun()
         
         # YouTube分类
-        st.markdown("### 🎥 YouTube")
+        st.markdown("### YouTube")
         youtube_pages = {
-            "youtube_dashboard": "📊 仪表盘",
-            "youtube_crawler": "🚀 爬虫",
-            "youtube_ai_rules": "🎯 规则"
+            "youtube_dashboard": "仪表盘",
+            "youtube_crawler": "爬虫",
+            "youtube_ai_rules": "规则"
         }
         
         for page_key, page_name in youtube_pages.items():
@@ -1128,11 +1415,11 @@ if __name__ == "__main__":
                 st.rerun()
         
         # GitHub分类
-        st.markdown("### 💻 GitHub")
+        st.markdown("### GitHub")
         github_pages = {
-            "github_dashboard": "📊 仪表盘",
-            "github_crawler": "🚀 爬虫",
-            "github_rules": "🎯 规则"
+            "github_dashboard": "仪表盘",
+            "github_crawler": "爬虫",
+            "github_rules": "规则"
         }
         
         for page_key, page_name in github_pages.items():
@@ -1146,12 +1433,30 @@ if __name__ == "__main__":
                 st.session_state.current_page = page_key
                 st.rerun()
         
+        # Twitter分类 - 暂时禁用(功能未完善)
+        # st.markdown("### Twitter/X")
+        # twitter_pages = {
+        #     "twitter_dashboard": "仪表盘",
+        #     "twitter_crawler": "爬虫"
+        # }
+        # 
+        # for page_key, page_name in twitter_pages.items():
+        #     is_active = st.session_state.current_page == page_key
+        #     if st.button(
+        #         page_name, 
+        #         key=f"btn_{page_key}", 
+        #         use_container_width=True,
+        #         type="primary" if is_active else "secondary"
+        #     ):
+        #         st.session_state.current_page = page_key
+        #         st.rerun()
+        
         st.divider()
         
         # 日志查看和设置（最后面）
         system_pages = {
-            "logs": "📝 日志查看",
-            "settings": "⚙️ 设置"
+            "logs": "日志查看",
+            "settings": "设置"
         }
         
         for page_key, page_name in system_pages.items():
@@ -1168,7 +1473,7 @@ if __name__ == "__main__":
         st.divider()
         
         if is_crawler_running():
-            st.warning("⚙️ 爬虫运行中...")
+            st.warning("爬虫运行中...")
         
         st.caption("多平台爬虫系统 v2.0")
         st.caption("© 2026 All Rights Reserved")
@@ -1193,6 +1498,11 @@ if __name__ == "__main__":
         render_github_crawler()
     elif page == "github_rules":
         render_github_rules()
+    # Twitter 页面暂时禁用(功能未完善)
+    # elif page == "twitter_dashboard":
+    #     render_twitter_dashboard()
+    # elif page == "twitter_crawler":
+    #     render_twitter_crawler()
     elif page == "data_browser":
         render_data_browser()
     elif page == "logs":

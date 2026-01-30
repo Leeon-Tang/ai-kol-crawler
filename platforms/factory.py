@@ -6,6 +6,7 @@ from typing import Dict, Optional
 from .base import BasePlatform
 from .youtube import YouTubePlatform
 from .github import GitHubPlatform
+from .twitter import TwitterPlatform
 
 
 class PlatformFactory:
@@ -27,6 +28,8 @@ class PlatformFactory:
                 cls._platforms[platform_name] = YouTubePlatform()
             elif platform_name == 'github':
                 cls._platforms[platform_name] = GitHubPlatform()
+            elif platform_name == 'twitter':
+                cls._platforms[platform_name] = TwitterPlatform()
         
         return cls._platforms.get(platform_name)
     
@@ -35,7 +38,8 @@ class PlatformFactory:
         """获取所有支持的平台"""
         return {
             'youtube': 'YouTube',
-            'github': 'GitHub'
+            'github': 'GitHub',
+            'twitter': 'Twitter/X'
         }
     
     @classmethod

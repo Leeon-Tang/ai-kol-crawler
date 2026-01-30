@@ -87,16 +87,9 @@ def render(
         )
     
     with col2:
-        strategy = st.selectbox(
-            "搜索策略",
-            ["quality_projects", "comprehensive", "keywords", "topics", "awesome", "explore", "indie"],
-            index=0,
-            format_func=lambda x: STRATEGY_NAMES[x],
-            help="优质项目策略：从Stable Diffusion、ComfyUI等优质AI项目中找贡献者（最精准）"
-        )
+        st.empty()  # 占位，保持布局
     
-    # 策略说明
-    st.info(f"💡 {STRATEGY_INFO[strategy]}")
+    st.info("💡 使用配置文件中的搜索关键词搜索项目，自动获取owner和贡献者")
     
     # 预估时间
     estimated_time = get_estimated_time(max_developers)
@@ -112,13 +105,12 @@ def render(
             add_log_func("=" * 60, "INFO")
             add_log_func(f"用户启动GitHub发现任务", "INFO")
             add_log_func(f"  - 最大数量: {max_developers}", "INFO")
-            add_log_func(f"  - 搜索策略: {strategy}", "INFO")
             add_log_func(f"  - 使用网页爬虫（无API限制）", "INFO")
             
             thread = threading_module.Thread(
                 target=run_crawler_task_func,
                 args=("discovery", session_state.github_repository),
-                kwargs={"max_developers": max_developers, "strategy": strategy}
+                kwargs={"max_developers": max_developers}
             )
             thread.daemon = True
             thread.start()

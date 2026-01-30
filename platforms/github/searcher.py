@@ -36,12 +36,14 @@ class GitHubSearcher:
         # 这样discovery可以动态请求更多开发者
         return developers
     
-    def search_by_keywords(self, keywords: List[str] = None, max_results_per_keyword: int = 10, max_developers: int = None) -> List[str]:
+    def search_projects(self, keywords: List[str] = None, max_results_per_keyword: int = 10, max_developers: int = None) -> List[str]:
         """
-        通过关键词搜索开发者
+        通过关键词搜索项目并提取开发者
         
-        策略：搜索仓库 -> 提取owner -> 去重
-        重点关注：AI工具、AI应用、AI框架的独立开发者
+        统一策略：
+        - 支持普通关键词搜索 (如: stable diffusion, AI tool)
+        - 支持awesome项目搜索 (如: awesome-generative-ai)
+        - 自动获取项目owner和贡献者
         
         Args:
             keywords: 关键词列表，如果为None则从配置读取
@@ -52,26 +54,19 @@ class GitHubSearcher:
             开发者用户名列表（去重）
         """
         if keywords is None:
-            # 针对WaveSpeedAI业务的精准关键词
-            # WaveSpeedAI：图像/视频生成API平台，面向AI应用开发者
-            keywords = [
-                # AI应用开发者
-                'AI SaaS', 'AI tool builder', 'AI application',
-                # 图像/视频相关
-                'image generation', 'video generation', 'AI image tool',
-                # API集成者
-                'API integration', 'AI API wrapper', 'AI SDK',
-                # 内容创作工具
-                'content creation tool', 'AI editor', 'generative AI app',
-                # 创业者/独立开发者
-                'indie maker AI', 'solo developer AI', 'AI startup'
-            ]
+            # 从配置文件读取搜索关键词
+            github_config = self.config.get('github', {})
+            keywords = github_config.get('search_keywords', [
+                # 默认关键词（如果配置文件中没有）
+                'stable diffusion', 'ComfyUI', 'AI tool',
+                'awesome-generative-ai', 'awesome-stable-diffusion'
+            ])
         
         # 随机打乱关键词顺序，增加随机性
         keywords = keywords.copy()
         random.shuffle(keywords)
         
-        logger.info(f"使用 {len(keywords)} 个关键词搜索GitHub开发者（已随机打乱）")
+        logger.info(f"使用 {len(keywords)} 个关键词搜索GitHub项目（已随机打乱）")
         
         developers = set()
         
@@ -94,15 +89,34 @@ class GitHubSearcher:
                 sort=sort
             )
             
-            # 提取owner
+            # 提取owner和贡献者
             for repo in repositories:
+                if max_developers and len(developers) >= max_developers:
+                    break
+                
+                # 添加owner
                 username = repo.get('owner_username')
                 if username and not self._is_organization(username):
                     developers.add(username)
+                
+                # 如果是awesome项目或高星项目，获取贡献者
+                repo_name = repo.get('repo_name')
+                stars = repo.get('stars', 0)
+                is_awesome = 'awesome' in keyword.lower() or (repo_name and 'awesome' in repo_name.lower())
+                
+                if repo_name and (is_awesome or stars >= 100):
+                    logger.info(f"  获取项目贡献者: {repo_name} ({stars} stars)")
+                    contributors = self.scraper.get_repository_contributors(
+                        repo_name, 
+                        max_contributors=30
+                    )
                     
-                    # 达到目标后立即停止
-                    if max_developers and len(developers) >= max_developers:
-                        break
+                    for contrib in contributors:
+                        if not self._is_organization(contrib):
+                            developers.add(contrib)
+                        
+                        if max_developers and len(developers) >= max_developers:
+                            break
             
             logger.info(f"当前已找到 {len(developers)} 个开发者")
         
@@ -121,22 +135,23 @@ class GitHubSearcher:
         策略：
         1. 搜索 "awesome AI" 相关列表
         2. 获取列表中提到的项目
-        3. 提取项目作者
+        3. 提取项目作者和贡献者
         
         Args:
-            topics: 主题列表
+            topics: awesome关键词列表，如果为None则从配置读取
             max_developers: 最大开发者数量
             
         Returns:
             开发者用户名列表
         """
         if topics is None:
-            # 针对WaveSpeedAI业务的awesome列表
-            topics = [
-                'awesome-generative-ai', 'awesome-ai-tools', 'awesome-ai-apps',
-                'awesome-image-generation', 'awesome-video', 'awesome-stable-diffusion',
-                'awesome-api', 'awesome-saas', 'awesome-indie-maker'
-            ]
+            # 从配置文件读取awesome搜索关键词
+            github_config = self.config.get('github', {})
+            topics = github_config.get('awesome_search_keywords', [
+                # 默认关键词（如果配置文件中没有）
+                'awesome-generative-ai', 'awesome-ai-tools', 'awesome-stable-diffusion',
+                'awesome-image-generation', 'awesome-video', 'awesome-ai-apps'
+            ])
         
         logger.info(f"搜索 {len(topics)} 个awesome列表")
         
@@ -228,7 +243,7 @@ class GitHubSearcher:
         策略：搜索特定topic标签的仓库，找到活跃的AI开发者
         
         Args:
-            topics: topic列表
+            topics: topic列表，如果为None则从配置读取
             max_per_topic: 每个topic的最大仓库数
             max_developers: 最大开发者数量
             
@@ -236,20 +251,13 @@ class GitHubSearcher:
             开发者用户名列表
         """
         if topics is None:
-            # 针对WaveSpeedAI业务的精准topics
-            topics = [
-                # 图像/视频生成
-                'image-generation', 'video-generation', 'text-to-image', 'text-to-video',
-                'stable-diffusion', 'generative-ai', 'diffusion-models',
-                # AI应用开发
-                'ai-tools', 'ai-application', 'ai-saas', 'ai-sdk',
-                # API相关
-                'api-wrapper', 'api-client', 'rest-api',
-                # 内容创作
-                'content-creation', 'creative-tools', 'media-generation',
-                # 开发者工具
-                'developer-tools', 'automation', 'productivity'
-            ]
+            # 从配置文件读取搜索topics
+            github_config = self.config.get('github', {})
+            topics = github_config.get('search_topics', [
+                # 默认topics（如果配置文件中没有）
+                'image-generation', 'video-generation', 'stable-diffusion',
+                'generative-ai', 'ai-tools', 'ai-application'
+            ])
         
         logger.info(f"通过 {len(topics)} 个topics搜索开发者")
         
@@ -442,115 +450,28 @@ class GitHubSearcher:
         
         return False
     
-    def discover_developers(self, strategy: str = 'comprehensive', limit: int = 100) -> List[str]:
+    def discover_developers(self, limit: int = 100) -> List[str]:
         """
-        综合发现开发者 - 智能策略分配
+        发现开发者 - 统一策略
+        
+        使用配置文件中的搜索关键词搜索项目,提取owner和贡献者
         
         Args:
-            strategy: 搜索策略
-                - 'quality_projects': 优质项目贡献者（推荐，最精准）
-                - 'comprehensive': 综合策略
-                - 'keywords': 仅关键词
-                - 'awesome': 仅awesome列表
-                - 'explore': 仅explore
-                - 'topics': 仅topics
-                - 'indie': 仅独立开发者
             limit: 最大开发者数量
             
         Returns:
             开发者用户名列表
         """
-        logger.info(f"开始发现开发者，策略: {strategy}, 限制: {limit}")
+        logger.info(f"开始发现开发者，限制: {limit}")
         
-        all_developers = set()
-        
-        if strategy == 'quality_projects':
-            # 新策略：从优质AI项目找贡献者（最精准）
-            logger.info("🎯 使用优质项目策略（推荐）")
-            developers = self.search_by_quality_projects(max_developers=limit)
-            all_developers.update(developers)
-            
-        elif strategy == 'comprehensive':
-            # 智能策略：根据目标数量动态调整
-            logger.info("使用综合策略，智能权重分配")
-            
-            if limit <= 10:
-                # 小数量：只用最快最有效的方法
-                logger.info(f"小数量模式（{limit}个），使用快速策略")
-                developers = self.search_by_keywords(max_results_per_keyword=3, max_developers=limit)
-                all_developers.update(developers)
-                
-            elif limit <= 50:
-                # 中等数量：关键词 + Topics
-                logger.info(f"中等数量模式（{limit}个），使用关键词+Topics")
-                
-                # 关键词 (60%)
-                target = int(limit * 0.6)
-                developers = self.search_by_keywords(max_results_per_keyword=5, max_developers=target)
-                all_developers.update(developers)
-                
-                # Topics (40%)
-                if len(all_developers) < limit:
-                    remaining = limit - len(all_developers)
-                    developers = self.search_by_topics(max_per_topic=8, max_developers=remaining)
-                    all_developers.update(developers)
-                
-            else:
-                # 大数量：全策略
-                logger.info(f"大数量模式（{limit}个），使用全策略")
-                
-                # 1. 关键词搜索 (40%)
-                target = int(limit * 0.4)
-                developers = self.search_by_keywords(max_results_per_keyword=5, max_developers=target)
-                all_developers.update(developers)
-                logger.info(f"关键词策略: {len(developers)} 个开发者")
-                
-                # 2. Topics搜索 (30%)
-                if len(all_developers) < limit:
-                    remaining = limit - len(all_developers)
-                    target = min(remaining, int(limit * 0.3))
-                    developers = self.search_by_topics(max_per_topic=8, max_developers=target)
-                    all_developers.update(developers)
-                    logger.info(f"Topics策略: {len(developers)} 个开发者")
-                
-                # 3. Awesome列表 (20%)
-                if len(all_developers) < limit:
-                    remaining = limit - len(all_developers)
-                    target = min(remaining, int(limit * 0.2))
-                    developers = self.search_awesome_lists(max_developers=target)
-                    all_developers.update(developers)
-                    logger.info(f"Awesome策略: {len(developers)} 个开发者")
-                
-                # 4. Explore (10%)
-                if len(all_developers) < limit:
-                    remaining = limit - len(all_developers)
-                    developers = self.search_by_explore(max_developers=remaining)
-                    all_developers.update(developers)
-                    logger.info(f"Explore策略: {len(developers)} 个开发者")
-            
-        elif strategy == 'keywords':
-            developers = self.search_by_keywords(max_developers=limit)
-            all_developers.update(developers)
-        elif strategy == 'awesome':
-            developers = self.search_awesome_lists(max_developers=limit)
-            all_developers.update(developers)
-        elif strategy == 'explore':
-            developers = self.search_by_explore(max_developers=limit)
-            all_developers.update(developers)
-        elif strategy == 'topics':
-            developers = self.search_by_topics(max_developers=limit)
-            all_developers.update(developers)
-        elif strategy == 'indie':
-            developers = self.search_indie_developers(max_results=limit)
-            all_developers.update(developers)
-        
-        developer_list = list(all_developers)[:limit]
-        
-        # 注意：不再在这里过滤已存在的开发者
-        # 去重逻辑已移到discovery层，这样可以动态补充
+        # 使用统一的搜索方法
+        developers = self.search_projects(max_results_per_keyword=10, max_developers=limit * 2)
         
         # 随机打乱结果，增加多样性
-        random.shuffle(developer_list)
+        random.shuffle(developers)
+        
+        # 限制数量
+        developer_list = developers[:limit]
         
         logger.info(f"发现完成，共 {len(developer_list)} 个开发者（已随机化）")
         

@@ -85,6 +85,7 @@ class Database:
         """初始化所有平台的数据库表"""
         self._init_youtube_tables()
         self._init_github_tables()
+        self._init_twitter_tables()
         self.conn.commit()
     
     def _init_youtube_tables(self):
@@ -226,6 +227,78 @@ class Database:
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_github_developers_status ON github_developers(status)")
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_github_developers_indie ON github_developers(is_indie_developer)")
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_github_repos_username ON github_repositories(username)")
+    
+    def _init_twitter_tables(self):
+        """初始化Twitter表"""
+        # Twitter用户表
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS twitter_users (
+                id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+                user_id TEXT UNIQUE NOT NULL,
+                username TEXT UNIQUE NOT NULL,
+                name TEXT,
+                bio TEXT,
+                location TEXT,
+                website TEXT,
+                profile_url TEXT,
+                avatar_url TEXT,
+                banner_url TEXT,
+                
+                followers_count INTEGER DEFAULT 0,
+                following_count INTEGER DEFAULT 0,
+                tweet_count INTEGER DEFAULT 0,
+                verified INTEGER DEFAULT 0,
+                is_blue_verified INTEGER DEFAULT 0,
+                created_at TEXT,
+                
+                analyzed_tweets INTEGER DEFAULT 0,
+                ai_tweets INTEGER DEFAULT 0,
+                ai_ratio REAL DEFAULT 0,
+                avg_engagement REAL DEFAULT 0,
+                original_tweets INTEGER DEFAULT 0,
+                original_ratio REAL DEFAULT 0,
+                quality_score REAL DEFAULT 0,
+                matched_keywords TEXT,
+                
+                contact_info TEXT,
+                status TEXT DEFAULT 'pending',
+                discovered_from TEXT,
+                discovered_at TEXT DEFAULT (datetime('now', '+8 hours')),
+                last_updated TEXT DEFAULT (datetime('now', '+8 hours')),
+                notes TEXT
+            )
+        """)
+        
+        # Twitter推文表
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS twitter_tweets (
+                id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+                tweet_id TEXT UNIQUE NOT NULL,
+                username TEXT,
+                text TEXT,
+                created_at TEXT,
+                
+                retweet_count INTEGER DEFAULT 0,
+                like_count INTEGER DEFAULT 0,
+                reply_count INTEGER DEFAULT 0,
+                quote_count INTEGER DEFAULT 0,
+                view_count INTEGER DEFAULT 0,
+                
+                is_retweet INTEGER DEFAULT 0,
+                is_quote INTEGER DEFAULT 0,
+                is_ai_related INTEGER DEFAULT 0,
+                language TEXT,
+                tweet_url TEXT,
+                scraped_at TEXT DEFAULT (datetime('now', '+8 hours')),
+                FOREIGN KEY (username) REFERENCES twitter_users(username)
+            )
+        """)
+        
+        # 创建索引
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_twitter_users_status ON twitter_users(status)")
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_twitter_users_quality ON twitter_users(quality_score)")
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_twitter_tweets_username ON twitter_tweets(username)")
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_twitter_tweets_ai ON twitter_tweets(is_ai_related)")
     
     def execute(self, query, params=None):
         """执行SQL查询"""

@@ -8,7 +8,11 @@ pandas>=2.0.0
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 selenium>=4.15.0
+webdriver-manager>=4.0.0
 
-# 可选依赖 - PostgreSQL支持（默认使用SQLite，无需此包）
-# 如需使用PostgreSQL，请取消下行注释并安装
+# Twitter/X平台依赖 - 使用Selenium爬取公开页面
+# selenium和webdriver-manager已在上面列出
+
+# 可选依赖 - PostgreSQL支持(默认使用SQLite,无需此包)
+# 如需使用PostgreSQL,请取消下行注释并安装
 # psycopg2-binary>=2.9.9

@@ -48,6 +48,13 @@ DEFAULT_CONFIG = {
     'min_followers': 100,
     'min_stars': 500,
     'min_repos': 3,
+    'search_keywords': [
+        'stable diffusion', 'ComfyUI', 'text-to-image', 'text-to-video',
+        'image generation', 'video generation', 'AI SaaS', 'AI tool',
+        'AI application', 'generative AI', 'diffusion model', 'AI API', 'AI SDK',
+        'awesome-generative-ai', 'awesome-ai-tools', 'awesome-stable-diffusion',
+        'awesome-image-generation', 'awesome-video', 'awesome-diffusion'
+    ],
     'core_ai_keywords': [
         # 机器学习/深度学习
         'machine-learning', 'deep-learning', 'neural-network', 'ml-model',
