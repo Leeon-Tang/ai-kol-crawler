@@ -10,14 +10,11 @@ INDIE_DEVELOPER_EXPLANATION = """
 
 1. **不属于大公司** - 不在Google、Microsoft、Meta等大公司工作
 2. **不是项目成员** - 不是ComfyUI、Automatic1111等知名项目的团队成员
-3. **有原创项目** - 至少有3个非fork的原创仓库
-4. **有影响力** - Followers ≥ 100 或 总Stars ≥ 500
-5. **有AI项目** - 至少有1个AI相关的原创项目
-6. **主要是创作者** - fork项目的stars占比不超过70%（避免纯贡献者）
+3. **有影响力** - Followers或总Stars达到配置的阈值
+4. **有AI项目** - 至少有1个AI相关的原创项目
 
 **排除规则：**
 - Bio或Company中标注为某项目成员（如"ComfyUI team member"）
-- 主要贡献集中在fork的项目上
 """
 
 KEYWORDS_EXPLANATION = """
@@ -47,7 +44,8 @@ KEYWORDS_EXPLANATION = """
 DEFAULT_CONFIG = {
     'min_followers': 100,
     'min_stars': 500,
-    'min_repos': 3,
+    'academic_min_followers': 50,
+    'academic_min_stars': 100,
     'search_keywords': [
         'stable diffusion', 'ComfyUI', 'text-to-image', 'text-to-video',
         'image generation', 'video generation', 'AI SaaS', 'AI tool',
@@ -70,7 +68,6 @@ DEFAULT_CONFIG = {
         'computer-vision', 'object-detection', 'image-recognition',
         'yolo', 'opencv-ai', 'face-recognition'
     ],
-    'helper_keywords': ['ai-tool', 'ai-app', 'ai-api', 'ai-sdk', 'ai-saas'],
     'exclusion_companies': [
         'Google', 'Microsoft', 'Meta', 'Facebook', 'Amazon', 'Apple',
         'Alibaba', 'Tencent', 'ByteDance', 'Baidu', 'Huawei', 'OpenAI',
@@ -78,20 +75,34 @@ DEFAULT_CONFIG = {
         'AWS', 'Azure', 'GCP', 'Cloudflare', 'Vercel'
     ],
     'exclusion_projects': ['ComfyUI', 'Automatic1111', 'Stable Diffusion WebUI', 'LangChain'],
-    'exclusion_developers': []  # 已爬取的开发者黑名单
+    'exclusion_developers': [],  # 已爬取的开发者黑名单
+    # 学术特征配置
+    'academic_keywords': [
+        'university', 'college', 'institute', 'research', 'lab', 'laboratory',
+        'phd', 'ph.d', 'professor', 'postdoc', 'post-doc', 'student',
+        'academic', 'scholar', 'researcher', 'faculty',
+        '大学', '学院', '研究所', '实验室', '博士', '教授', '研究员', '学者'
+    ],
+    'research_project_keywords': [
+        'paper', 'arxiv', 'implementation', 'reproduction', 'reproduce',
+        'research', 'experiment', 'benchmark', 'dataset', 'pretrained',
+        'model', 'training', '论文', '复现', '实验', '研究'
+    ]
 }
 
 # ==================== 帮助文本 ====================
 
 HELP_TEXTS = {
-    'min_followers': "开发者的最小粉丝数量",
-    'min_stars': "所有原创仓库的总stars数",
-    'min_repos': "非fork的原创仓库数量",
+    'min_followers': "开发者的最小粉丝数量（商业开发者）",
+    'min_stars': "所有原创仓库的总stars数（商业开发者）",
+    'academic_min_followers': "学术人士的最小粉丝数量",
+    'academic_min_stars': "学术人士的最小总stars数",
     'core_ai_keywords': "这些关键词用于判断项目是否与AI相关，包括：机器学习、生成式AI、LLM、计算机视觉等",
-    'helper_keywords': "这些关键词需要与'ai'组合使用，如：ai-tool, ai-api, ai-sdk",
     'exclusion_companies': "Company字段包含这些名称的开发者将被过滤",
     'exclusion_projects': "Bio或Company中标注为这些项目成员的开发者将被过滤",
-    'exclusion_developers': "已爬取过的开发者用户名列表，避免重复爬取浪费资源（适用于数据库被删除后重新爬取的场景）"
+    'exclusion_developers': "已爬取过的开发者用户名列表，避免重复爬取浪费资源（适用于数据库被删除后重新爬取的场景）",
+    'academic_keywords': "用于识别学术人士的关键词，检查Bio/Company/Location字段",
+    'research_project_keywords': "用于识别研究项目的关键词，检查仓库名称和描述"
 }
 
 # ==================== 标签 ====================
@@ -102,8 +113,6 @@ LABELS = {
     'indie_developer_criteria': '📊 独立开发者判断标准',
     'screening_params': '🎯 筛选参数',
     'ai_keywords': '🔑 AI项目识别关键词',
-    'core_keywords_tab': '🎯 核心关键词',
-    'helper_keywords_tab': '🔧 辅助关键词',
     'exclusion_companies': '🏢 排除的公司/组织',
     'exclusion_projects': '🚫 排除的项目团队',
     'exclusion_developers': '🚫 已爬取开发者黑名单',
@@ -116,10 +125,11 @@ LABELS = {
 
 CAPTIONS = {
     'core_keywords': '用于识别AI相关项目的核心关键词（匹配任意一个即可）',
-    'helper_keywords': '辅助关键词（需要同时包含\'ai\'才算匹配）',
     'exclusion_companies': '在这些公司工作的开发者将被排除',
     'exclusion_projects': '这些项目的团队成员将被排除',
-    'exclusion_developers': '⚠️ 已爬取过的开发者用户名（每行一个），爬虫会自动跳过这些用户，避免重复爬取'
+    'exclusion_developers': '⚠️ 已爬取过的开发者用户名（每行一个），爬虫会自动跳过这些用户，避免重复爬取',
+    'academic_keywords': '用于识别学术人士的关键词（检查Profile信息）',
+    'research_project_keywords': '用于识别研究项目的关键词（检查仓库信息）'
 }
 
 # ==================== 搜索策略 ====================

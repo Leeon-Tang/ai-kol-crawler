@@ -18,6 +18,39 @@ class GitHubSearcher:
         self.scraper = scraper or GitHubScraper()
         self.config = load_config()
         self.repository = repository  # 用于数据库去重
+        
+        # 加载发现策略配置
+        github_config = self.config.get('github', {})
+        self.strategy_config = github_config.get('discovery_strategy', {})
+        
+        # 去重缓存（根据配置决定是否启用）
+        self.enable_deduplication = self.strategy_config.get('enable_deduplication', True)
+        self.deduplication_scope = self.strategy_config.get('deduplication_scope', 'session')
+        self.discovered_developers = set() if self.enable_deduplication else None
+        
+        if self.enable_deduplication:
+            logger.info(f"✓ 去重策略已启用 (范围: {self.deduplication_scope})")
+        else:
+            logger.info("⊙ 去重策略已禁用")
+    
+    def _should_add_developer(self, username: str) -> bool:
+        """
+        判断是否应该添加该开发者（去重检查）
+        
+        Args:
+            username: 开发者用户名
+            
+        Returns:
+            True表示应该添加，False表示已存在
+        """
+        if not self.enable_deduplication:
+            return True
+        
+        if username in self.discovered_developers:
+            return False
+        
+        self.discovered_developers.add(username)
+        return True
     
     def _filter_existing_developers(self, developers: Set[str]) -> Set[str]:
         """
@@ -36,19 +69,22 @@ class GitHubSearcher:
         # 这样discovery可以动态请求更多开发者
         return developers
     
-    def search_projects(self, keywords: List[str] = None, max_results_per_keyword: int = 10, max_developers: int = None) -> List[str]:
+    def search_projects(self, keywords: List[str] = None, max_results_per_keyword: int = 10, 
+                       max_developers: int = None, current_qualified: int = 0) -> List[str]:
         """
-        通过关键词搜索项目并提取开发者
+        通过关键词搜索项目并提取开发者（智能策略）
         
         统一策略：
         - 支持普通关键词搜索 (如: stable diffusion, AI tool)
         - 支持awesome项目搜索 (如: awesome-generative-ai)
         - 自动获取项目owner和贡献者
+        - 智能控制发现数量，避免资源浪费
         
         Args:
             keywords: 关键词列表，如果为None则从配置读取
             max_results_per_keyword: 每个关键词的最大结果数
-            max_developers: 最大开发者数量，达到后提前终止
+            max_developers: 目标开发者数量
+            current_qualified: 当前已合格的开发者数量（用于智能停止）
             
         Returns:
             开发者用户名列表（去重）
@@ -66,11 +102,30 @@ class GitHubSearcher:
         keywords = keywords.copy()
         random.shuffle(keywords)
         
+        # 智能停止策略配置
+        stop_when_sufficient = self.strategy_config.get('stop_when_sufficient', True)
+        sufficient_buffer = self.strategy_config.get('sufficient_buffer_count', 5)
+        
         logger.info(f"使用 {len(keywords)} 个关键词搜索GitHub项目（已随机打乱）")
+        if stop_when_sufficient and max_developers:
+            remaining = max_developers - current_qualified
+            logger.info(f"智能停止策略: 还需 {remaining} 个合格开发者，缓冲 {sufficient_buffer} 个")
         
         developers = set()
         
         for i, keyword in enumerate(keywords, 1):
+            # 智能停止：如果已经有足够的候选者，提前终止
+            if stop_when_sufficient and max_developers and current_qualified > 0:
+                remaining = max_developers - current_qualified
+                if remaining <= 0:
+                    logger.info(f"✓ 已达到目标数量，停止搜索")
+                    break
+                
+                # 如果已发现的开发者数量 >= 剩余需要数量 + 缓冲数量，停止搜索
+                if len(developers) >= remaining + sufficient_buffer:
+                    logger.info(f"✓ 已发现足够候选者 ({len(developers)} >= {remaining + sufficient_buffer})，停止搜索")
+                    break
+            
             # 如果已经达到目标数量，提前终止
             if max_developers and len(developers) >= max_developers:
                 logger.info(f"已达到目标数量 {max_developers}，提前终止搜索")
@@ -94,26 +149,32 @@ class GitHubSearcher:
                 if max_developers and len(developers) >= max_developers:
                     break
                 
-                # 添加owner
+                # 添加owner（去重检查）
                 username = repo.get('owner_username')
                 if username and not self._is_organization(username):
-                    developers.add(username)
+                    if self._should_add_developer(username):
+                        developers.add(username)
                 
                 # 如果是awesome项目或高星项目，获取贡献者
                 repo_name = repo.get('repo_name')
                 stars = repo.get('stars', 0)
                 is_awesome = 'awesome' in keyword.lower() or (repo_name and 'awesome' in repo_name.lower())
                 
+                # 动态获取贡献者数量限制
                 if repo_name and (is_awesome or stars >= 100):
-                    logger.info(f"  获取项目贡献者: {repo_name} ({stars} stars)")
+                    max_contrib = self._get_contributor_limit(repo_name, stars, is_awesome)
+                    
+                    logger.info(f"  获取项目贡献者: {repo_name} ({stars} stars, 限制{max_contrib}个)")
                     contributors = self.scraper.get_repository_contributors(
                         repo_name, 
-                        max_contributors=30
+                        max_contributors=max_contrib
                     )
                     
                     for contrib in contributors:
                         if not self._is_organization(contrib):
-                            developers.add(contrib)
+                            # 去重检查
+                            if self._should_add_developer(contrib):
+                                developers.add(contrib)
                         
                         if max_developers and len(developers) >= max_developers:
                             break
@@ -450,29 +511,270 @@ class GitHubSearcher:
         
         return False
     
-    def discover_developers(self, limit: int = 100) -> List[str]:
+    def discover_developers_generator(self, target_qualified: int, max_attempts: int = 500):
         """
-        发现开发者 - 统一策略
+        发现开发者生成器 - 逐个返回候选者
         
-        使用配置文件中的搜索关键词搜索项目,提取owner和贡献者
+        策略：深度优先，一个仓库的所有贡献者都返回完才换下一个仓库
+        这样discovery层可以逐个分析，一个仓库分析完才换下一个
         
         Args:
-            limit: 最大开发者数量
+            target_qualified: 目标合格开发者数量
+            max_attempts: 最大尝试次数
+            
+        Yields:
+            (username, source_info) 元组：开发者用户名和来源信息
+        """
+        logger.info(f"开始深度优先发现（生成器模式），目标: {target_qualified} 个合格开发者")
+        
+        # 从配置文件读取搜索关键词
+        github_config = self.config.get('github', {})
+        keywords = github_config.get('search_keywords', [
+            'stable diffusion', 'ComfyUI', 'AI tool',
+            'awesome-generative-ai', 'awesome-stable-diffusion'
+        ])
+        
+        # 随机打乱关键词顺序
+        keywords = keywords.copy()
+        random.shuffle(keywords)
+        
+        logger.info(f"使用 {len(keywords)} 个关键词搜索（深度优先，已随机打乱）")
+        
+        discovered_count = 0
+        
+        for keyword_idx, keyword in enumerate(keywords, 1):
+            if discovered_count >= max_attempts:
+                logger.info(f"已达到最大尝试次数 {max_attempts}，停止搜索")
+                break
+            
+            logger.info(f"\n{'='*60}")
+            logger.info(f"[{keyword_idx}/{len(keywords)}] 搜索关键词: {keyword}")
+            logger.info(f"{'='*60}")
+            
+            # 随机选择排序方式
+            sort_options = ['stars', 'updated', 'forks']
+            sort = random.choice(sort_options)
+            
+            # 搜索仓库（一次性搜索10个，存起来）
+            repositories = self.scraper.search_repositories(
+                keyword, 
+                max_results=10,
+                sort=sort
+            )
+            
+            if not repositories:
+                logger.info(f"  未找到仓库，跳过该关键词")
+                continue
+            
+            logger.info(f"✓ 找到 {len(repositories)} 个仓库，开始逐个深度挖掘...")
+            
+            # 逐个处理仓库（深度优先）
+            for repo_idx, repo in enumerate(repositories, 1):
+                if discovered_count >= max_attempts:
+                    logger.info(f"\n已达到最大尝试次数，停止")
+                    break
+                
+                repo_name = repo.get('repo_name')
+                stars = repo.get('stars', 0)
+                owner_username = repo.get('owner_username')
+                
+                logger.info(f"\n{'─'*60}")
+                logger.info(f"仓库 [{repo_idx}/{len(repositories)}]: {repo_name} ({stars} ⭐)")
+                logger.info(f"{'─'*60}")
+                
+                # 先返回owner
+                if owner_username and not self._is_organization(owner_username):
+                    if self._should_add_developer(owner_username):
+                        discovered_count += 1
+                        source_info = f"Owner of {repo_name}"
+                        logger.info(f"  → 返回 Owner: {owner_username}")
+                        yield (owner_username, source_info)
+                
+                # 判断是否需要获取贡献者
+                is_awesome = 'awesome' in keyword.lower() or (repo_name and 'awesome' in repo_name.lower())
+                
+                if not repo_name or (not is_awesome and stars < 100):
+                    logger.info(f"  ⊙ 跳过低星项目 ({stars} stars < 100)")
+                    continue
+                
+                logger.info(f"  开始获取贡献者...")
+                
+                # 获取所有贡献者
+                contributors = self.scraper.get_repository_contributors(repo_name)
+                
+                if not contributors:
+                    logger.info(f"  ⊙ 无贡献者数据")
+                    continue
+                
+                logger.info(f"  ✓ 该仓库有 {len(contributors)} 个贡献者，逐个返回...")
+                
+                # 逐个返回贡献者（深度优先：一个仓库的所有贡献者都返回完才换下一个）
+                repo_yield_count = 0
+                for contrib_idx, contrib in enumerate(contributors, 1):
+                    if discovered_count >= max_attempts:
+                        break
+                    
+                    if not self._is_organization(contrib):
+                        if self._should_add_developer(contrib):
+                            discovered_count += 1
+                            repo_yield_count += 1
+                            source_info = f"Contributor #{contrib_idx} of {repo_name}"
+                            logger.info(f"  → 返回贡献者 [{contrib_idx}/{len(contributors)}]: {contrib}")
+                            yield (contrib, source_info)
+                
+                logger.info(f"  ✓ 该仓库返回了 {repo_yield_count} 个新开发者")
+                logger.info(f"  累计已发现: {discovered_count} 个")
+        
+        logger.info(f"\n{'='*60}")
+        logger.info(f"深度优先搜索完成，共发现 {discovered_count} 个独特的开发者")
+        logger.info(f"{'='*60}")
+    
+    def discover_developers(self, limit: int = 100, current_qualified: int = 0) -> List[str]:
+        """
+        发现开发者 - 深度优先策略
+        
+        策略：逐个仓库深度挖掘，而不是广度搜索
+        - 先搜索一个仓库，获取所有贡献者
+        - 如果数量不够，再搜索下一个仓库
+        - 避免过早搜索多个仓库造成资源浪费
+        
+        Args:
+            limit: 目标开发者数量
+            current_qualified: 当前已合格的开发者数量
             
         Returns:
             开发者用户名列表
         """
-        logger.info(f"开始发现开发者，限制: {limit}")
+        logger.info(f"开始发现开发者（深度优先），目标: {limit}, 当前已合格: {current_qualified}")
         
-        # 使用统一的搜索方法
-        developers = self.search_projects(max_results_per_keyword=10, max_developers=limit * 2)
+        # 计算实际需要发现的数量（带缓冲）
+        remaining = limit - current_qualified
+        buffer_ratio = self.strategy_config.get('discovery_buffer_ratio', 1.3)
+        target_discovery = int(remaining * buffer_ratio)
+        
+        # 限制单批次最大/最小数量
+        max_per_batch = self.strategy_config.get('max_discovery_per_batch', 50)
+        min_per_batch = self.strategy_config.get('min_discovery_per_batch', 10)
+        target_discovery = max(min(target_discovery, max_per_batch), min_per_batch)
+        
+        logger.info(f"智能策略: 还需 {remaining} 个，本批次目标发现 {target_discovery} 个（缓冲比例: {buffer_ratio}）")
+        
+        # 使用深度优先搜索
+        developers = self._search_depth_first(target_count=target_discovery)
         
         # 随机打乱结果，增加多样性
         random.shuffle(developers)
         
-        # 限制数量
-        developer_list = developers[:limit]
+        logger.info(f"发现完成，共 {len(developers)} 个开发者（已随机化）")
         
-        logger.info(f"发现完成，共 {len(developer_list)} 个开发者（已随机化）")
+        return developers
+    
+    def _search_depth_first(self, target_count: int) -> List[str]:
+        """
+        深度优先搜索开发者
+        
+        策略：
+        1. 逐个搜索关键词
+        2. 对每个关键词，逐个处理仓库
+        3. 对每个仓库，获取所有贡献者（不限制数量）
+        4. 达到目标数量后立即停止
+        
+        Args:
+            target_count: 目标发现数量
+            
+        Returns:
+            开发者用户名列表
+        """
+        # 从配置文件读取搜索关键词
+        github_config = self.config.get('github', {})
+        keywords = github_config.get('search_keywords', [
+            'stable diffusion', 'ComfyUI', 'AI tool',
+            'awesome-generative-ai', 'awesome-stable-diffusion'
+        ])
+        
+        # 随机打乱关键词顺序
+        keywords = keywords.copy()
+        random.shuffle(keywords)
+        
+        logger.info(f"使用 {len(keywords)} 个关键词搜索（深度优先，已随机打乱）")
+        
+        developers = set()
+        
+        for keyword_idx, keyword in enumerate(keywords, 1):
+            # 检查是否已达到目标
+            if len(developers) >= target_count:
+                logger.info(f"✓ 已达到目标数量 {target_count}，停止搜索")
+                break
+            
+            remaining = target_count - len(developers)
+            logger.info(f"[{keyword_idx}/{len(keywords)}] 搜索关键词: {keyword} (还需 {remaining} 个)")
+            
+            # 随机选择排序方式
+            sort_options = ['stars', 'updated', 'forks']
+            sort = random.choice(sort_options)
+            
+            # 搜索仓库
+            repositories = self.scraper.search_repositories(
+                keyword, 
+                max_results=10,
+                sort=sort
+            )
+            
+            if not repositories:
+                logger.debug(f"  未找到仓库，跳过")
+                continue
+            
+            # 逐个处理仓库（深度优先）
+            for repo_idx, repo in enumerate(repositories, 1):
+                if len(developers) >= target_count:
+                    logger.info(f"  ✓ 已达到目标，停止处理仓库")
+                    break
+                
+                repo_name = repo.get('repo_name')
+                stars = repo.get('stars', 0)
+                owner_username = repo.get('owner_username')
+                
+                # 添加owner
+                if owner_username and not self._is_organization(owner_username):
+                    if self._should_add_developer(owner_username):
+                        developers.add(owner_username)
+                        logger.debug(f"  + Owner: {owner_username}")
+                
+                # 判断是否需要获取贡献者
+                is_awesome = 'awesome' in keyword.lower() or (repo_name and 'awesome' in repo_name.lower())
+                
+                if not repo_name or (not is_awesome and stars < 100):
+                    logger.debug(f"  跳过低星项目: {repo_name} ({stars} stars)")
+                    continue
+                
+                logger.info(f"  [{repo_idx}/{len(repositories)}] 深度挖掘: {repo_name} ({stars} stars)")
+                
+                # 获取所有贡献者（不限制数量）
+                contributors = self.scraper.get_repository_contributors(repo_name)
+                
+                if not contributors:
+                    logger.debug(f"    无贡献者数据")
+                    continue
+                
+                # 添加所有贡献者（去重）
+                added_count = 0
+                for contrib in contributors:
+                    if len(developers) >= target_count:
+                        break
+                    
+                    if not self._is_organization(contrib):
+                        if self._should_add_developer(contrib):
+                            developers.add(contrib)
+                            added_count += 1
+                
+                logger.info(f"    ✓ 从该仓库新增 {added_count} 个开发者，当前总数: {len(developers)}")
+                
+                # 如果已经足够，提前停止
+                if len(developers) >= target_count:
+                    logger.info(f"  ✓ 已达到目标数量，停止搜索")
+                    break
+        
+        developer_list = list(developers)
+        logger.info(f"深度优先搜索完成，共找到 {len(developer_list)} 个独特的开发者")
         
         return developer_list

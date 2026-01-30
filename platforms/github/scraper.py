@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-GitHub爬虫 - 简化版（无代理）
+GitHub爬虫 - 使用API获取贡献者
+
+策略更新（2026-01-30）：
+- 使用GitHub内部API (/graphs/contributors-data) 获取贡献者
+- 速度快、稳定、可获取完整列表（100+个贡献者）
+- 不再使用Selenium或侧边栏爬取
 """
 import requests
 import time
@@ -12,20 +17,6 @@ from utils.logger import setup_logger
 from utils.retry import retry_on_failure
 
 logger = setup_logger()
-
-# Selenium相关导入（用于动态页面）
-try:
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from webdriver_manager.chrome import ChromeDriverManager
-    SELENIUM_AVAILABLE = True
-except ImportError:
-    SELENIUM_AVAILABLE = False
-    logger.warning("Selenium未安装，无法获取动态渲染的贡献者列表")
 
 
 class GitHubScraper:
@@ -53,49 +44,11 @@ class GitHubScraper:
         self.last_request_time = 0
         self.rate_limit_count = 0
         self.consecutive_429 = 0  # 连续429次数
-        self.driver = None  # Selenium driver
         
         logger.info(f"爬虫初始化（延迟3-5秒，{len(self.user_agents)}个UA）")
         logger.info("⏳ 等待3秒让IP冷却...")
         time.sleep(3)  # 改为3秒冷却期
         logger.info("✓ 冷却完成，开始爬取")
-    
-    # Selenium功能已禁用 - 不再初始化driver
-    # def _get_selenium_driver(self):
-    #     """获取或创建Selenium driver（懒加载）"""
-    #     if not SELENIUM_AVAILABLE:
-    #         logger.error("Selenium未安装，无法使用动态渲染功能")
-    #         return None
-    #     
-    #     if self.driver is None:
-    #         try:
-    #             chrome_options = Options()
-    #             chrome_options.add_argument('--headless')  # 无头模式
-    #             chrome_options.add_argument('--no-sandbox')
-    #             chrome_options.add_argument('--disable-dev-shm-usage')
-    #             chrome_options.add_argument('--disable-gpu')
-    #             chrome_options.add_argument(f'user-agent={random.choice(self.user_agents)}')
-    #             
-    #             # 使用webdriver-manager自动管理ChromeDriver
-    #             service = Service(ChromeDriverManager().install())
-    #             self.driver = webdriver.Chrome(service=service, options=chrome_options)
-    #             logger.info("✓ Selenium driver已初始化")
-    #         except Exception as e:
-    #             logger.error(f"初始化Selenium driver失败: {e}")
-    #             logger.error("请确保已安装Chrome浏览器")
-    #             return None
-    #     
-    #     return self.driver
-    
-    # Selenium功能已禁用 - 不再需要清理
-    # def __del__(self):
-    #     """清理资源"""
-    #     if hasattr(self, 'driver') and self.driver is not None:
-    #         try:
-    #             self.driver.quit()
-    #             logger.info("✓ Selenium driver已关闭")
-    #         except:
-    #             pass
     
     def _get_headers(self):
         return {
@@ -302,6 +255,14 @@ class GitHubScraper:
                 if email_match:
                     user_info['email'] = email_match.group(0)
             
+            # 方式4：如果profile没有邮箱，尝试从commit记录提取
+            if not user_info['email']:
+                logger.debug(f"Profile无邮箱，尝试从commit提取: {username}")
+                commit_email = self._extract_email_from_commits(username)
+                if commit_email:
+                    user_info['email'] = commit_email
+                    logger.info(f"✓ 从commit提取到邮箱: {commit_email}")
+            
             # 提取博客/网站
             blog_elem = soup.select_one('li[itemprop="url"] a[rel*="nofollow"]')
             if blog_elem:
@@ -358,6 +319,79 @@ class GitHubScraper:
             
         except Exception as e:
             logger.error(f"获取用户失败{username}: {e}")
+            return None
+    
+    def _extract_email_from_commits(self, username: str) -> Optional[str]:
+        """
+        从用户的commit记录中提取邮箱（高效版本）
+        
+        策略：
+        - 只检查最近更新的2个仓库
+        - 每个仓库只获取最近5个commits
+        - 找到第一个有效邮箱就返回
+        
+        Args:
+            username: GitHub用户名
+            
+        Returns:
+            邮箱地址或None
+        """
+        try:
+            # 1. 获取用户最近的2个仓库（API方式，更快）
+            repos_url = f"https://api.github.com/users/{username}/repos"
+            headers = {
+                'User-Agent': random.choice(self.user_agents),
+                'Accept': 'application/vnd.github.v3+json'
+            }
+            params = {'sort': 'updated', 'per_page': 2}
+            
+            response = self.session.get(repos_url, headers=headers, params=params, timeout=10)
+            
+            if response.status_code != 200:
+                return None
+            
+            repos = response.json()
+            
+            if not isinstance(repos, list) or not repos:
+                return None
+            
+            # 2. 对每个仓库，获取最近的commits
+            for repo in repos:
+                repo_full_name = repo.get('full_name')
+                if not repo_full_name:
+                    continue
+                
+                # 获取该仓库该用户的最近5个commits
+                commits_url = f"https://api.github.com/repos/{repo_full_name}/commits"
+                params = {'author': username, 'per_page': 5}
+                
+                try:
+                    commits_response = self.session.get(commits_url, headers=headers, params=params, timeout=10)
+                    
+                    if commits_response.status_code != 200:
+                        continue
+                    
+                    commits = commits_response.json()
+                    
+                    if not isinstance(commits, list) or not commits:
+                        continue
+                    
+                    # 3. 提取邮箱
+                    for commit in commits:
+                        commit_data = commit.get('commit', {})
+                        author = commit_data.get('author', {})
+                        email = author.get('email', '')
+                        
+                        if email and 'noreply.github.com' not in email.lower():
+                            # 找到有效邮箱，立即返回
+                            return email
+                    
+                except Exception:
+                    continue
+            
+            return None
+            
+        except Exception:
             return None
     
     @retry_on_failure(max_retries=3)
@@ -427,158 +461,115 @@ class GitHubScraper:
             return []
     
     @retry_on_failure(max_retries=3)
-    def get_repository_contributors(self, repo_full_name: str, max_contributors: int = 20) -> List[str]:
+    def get_repository_contributors(self, repo_full_name: str, max_contributors: int = None) -> List[str]:
         """
-        获取仓库贡献者
+        获取仓库贡献者列表（使用GitHub API）
         
-        策略：
-        1. 从仓库主页侧边栏获取（快速，通常10-13个）
-        2. 如果侧边栏显示有>14个贡献者，才去/graphs/contributors页面获取更多
+        通过GitHub的contributors-data API获取完整的贡献者列表
+        这是推荐的方法，速度快且稳定
+        
+        Args:
+            repo_full_name: 仓库全名，格式为 "owner/repo"
+            max_contributors: 最大获取数量，None表示不限制
+            
+        Returns:
+            贡献者用户名列表
         """
-        self._wait()
-        
         contributors = []
         owner = repo_full_name.split('/')[0]
         
         try:
-            # 从主页侧边栏获取
-            url = f"https://github.com/{repo_full_name}"
-            response = self.session.get(url, headers=self._get_headers(), timeout=15)
+            self._wait()
+            
+            # 使用GitHub的contributors-data API
+            api_url = f"https://github.com/{repo_full_name}/graphs/contributors-data"
+            logger.debug(f"获取贡献者: {repo_full_name}")
+            
+            # 需要特殊的headers来访问这个API
+            headers = self._get_headers()
+            headers['Accept'] = 'application/json'
+            headers['X-Requested-With'] = 'XMLHttpRequest'
+            
+            response = self.session.get(api_url, headers=headers, timeout=15)
+            
+            # 检查响应状态
+            if response.status_code == 404:
+                logger.debug(f"仓库不存在或无贡献者数据: {repo_full_name}")
+                return []
+            
+            if response.status_code == 429:
+                logger.warning(f"速率限制: {repo_full_name}")
+                return []
+            
             response.raise_for_status()
             
-            soup = BeautifulSoup(response.text, 'html.parser')
+            # 检查响应内容类型
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' not in content_type:
+                logger.debug(f"非JSON响应 ({content_type}): {repo_full_name}")
+                return []
             
-            # 查找Contributors侧边栏
-            contributors_heading = soup.find('a', href=lambda x: x and '/graphs/contributors' in x if x else False)
+            # 检查响应是否为空
+            if not response.text or response.text.strip() == '':
+                logger.debug(f"空响应: {repo_full_name}")
+                return []
             
-            total_contributors_count = 0
-            if contributors_heading:
-                # 尝试获取总贡献者数量
-                heading_text = contributors_heading.get_text()
-                import re
-                count_match = re.search(r'(\d+)', heading_text)
-                if count_match:
-                    total_contributors_count = int(count_match.group(1))
+            # 解析JSON数据
+            try:
+                data = response.json()
+            except ValueError as json_err:
+                logger.debug(f"JSON解析失败 {repo_full_name}: {json_err}")
+                return []
+            
+            if not isinstance(data, list):
+                logger.debug(f"API返回数据格式错误 ({type(data).__name__}): {repo_full_name}")
+                return []
+            
+            if len(data) == 0:
+                logger.debug(f"无贡献者数据: {repo_full_name}")
+                return []
+            
+            logger.debug(f"API返回 {len(data)} 个贡献者")
+            
+            # 提取用户名
+            seen_usernames = set()
+            for contributor_data in data:
+                # 如果设置了限制且已达到，停止
+                if max_contributors and len(contributors) >= max_contributors:
+                    break
                 
-                parent = contributors_heading.find_parent('div', class_='BorderGrid-cell')
+                if not isinstance(contributor_data, dict):
+                    continue
                 
-                if parent:
-                    user_links = parent.select('a[data-hovercard-type="user"]')
-                    
-                    # 如果没有找到用户链接，可能是动态加载的，尝试从include-fragment获取
-                    if len(user_links) == 0:
-                        include_fragment = parent.select_one('include-fragment[src*="contributors_list"]')
-                        if include_fragment:
-                            fragment_src = include_fragment.get('src', '')
-                            if fragment_src:
-                                # 请求动态内容
-                                try:
-                                    self._wait()  # 遵守速率限制
-                                    fragment_url = f"https://github.com{fragment_src}"
-                                    fragment_response = self.session.get(fragment_url, headers=self._get_headers(), timeout=15)
-                                    fragment_response.raise_for_status()
-                                    
-                                    fragment_soup = BeautifulSoup(fragment_response.text, 'html.parser')
-                                    user_links = fragment_soup.select('a[data-hovercard-type="user"]')
-                                except Exception as e:
-                                    logger.warning(f"获取动态贡献者列表失败: {e}")
-                    
-                    for link in user_links:
-                        href = link.get('href', '')
-                        
-                        if href:
-                            # 处理完整URL和相对路径
-                            if href.startswith('https://github.com/'):
-                                username = href.replace('https://github.com/', '').split('/')[0]
-                            elif href.startswith('/'):
-                                username = href.strip('/').split('/')[0]
-                            else:
-                                continue
-                            
-                            # 排除owner和系统路径
-                            if username and username != owner and username not in contributors:
-                                if username not in ['github', 'apps', 'marketplace', 'features', 'enterprise', 'pricing']:
-                                    contributors.append(username)
+                author = contributor_data.get('author')
+                if not author or not isinstance(author, dict):
+                    continue
+                
+                username = author.get('login')
+                if not username:
+                    continue
+                
+                # 过滤：排除owner、去重、验证格式
+                if username and username != owner and username not in seen_usernames:
+                    if username.replace('-', '').replace('_', '').isalnum():
+                        contributors.append(username)
+                        seen_usernames.add(username)
             
-            # TODO: Selenium动态渲染功能已暂时禁用
-            # 原因：滚动次数和等待时间不稳定，有时能获取20个，有时只有几个
-            # 而且侧边栏获取也不稳定（有时13个，有时0个）
-            # 当前策略：只依赖侧边栏的10-13个贡献者
+            if contributors:
+                logger.info(f"✓ 从{repo_full_name}获取{len(contributors)}个贡献者")
+            else:
+                logger.debug(f"未找到有效贡献者: {repo_full_name}")
             
-            # if total_contributors_count > 14 and len(contributors) < max_contributors and SELENIUM_AVAILABLE:
-            #     logger.info(f"从侧边栏获取{len(contributors)}个，使用Selenium获取更多...")
-            #     
-            #     driver = self._get_selenium_driver()
-            #     if driver:
-            #         try:
-            #             self._wait()
-            #             contrib_url = f"https://github.com/{repo_full_name}/graphs/contributors"
-            #             driver.get(contrib_url)
-            #             
-            #             # 等待页面基本元素加载
-            #             wait = WebDriverWait(driver, 20)
-            #             wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-            #             
-            #             # 等待图表容器出现
-            #             try:
-            #                 wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li.Index-module__chartListItem--aHSZR")))
-            #                 time.sleep(2)  # 等待初始内容加载
-            #             except:
-            #                 pass
-            #             
-            #             # 持续滚动以触发懒加载
-            #             scroll_count = 12
-            #             
-            #             for attempt in range(scroll_count):
-            #                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            #                 time.sleep(2)
-            #                 logger.debug(f"滚动第{attempt+1}/{scroll_count}次")
-            #             
-            #             # 滚动回顶部并等待渲染完成
-            #             driver.execute_script("window.scrollTo(0, 0);")
-            #             time.sleep(3)
-            #             
-            #             # 获取渲染后的HTML
-            #             page_source = driver.page_source
-            #             contrib_soup = BeautifulSoup(page_source, 'html.parser')
-            #             
-            #             # 从图表列表项中提取贡献者
-            #             chart_items = contrib_soup.select('li.Index-module__chartListItem--aHSZR')
-            #             logger.info(f"找到 {len(chart_items)} 个图表列表项")
-            #             
-            #             for item in chart_items:
-            #                 if len(contributors) >= max_contributors:
-            #                     break
-            #                 
-            #                 # 在每个图表项中查找用户链接（只取第一个，避免重复）
-            #                 user_links = item.select('a.prc-Link-Link-9ZwDx[href^="/"]')
-            #                 
-            #                 if user_links:
-            #                     # 只处理第一个链接（用户名链接）
-            #                     link = user_links[0]
-            #                     href = link.get('href', '')
-            #                     if href:
-            #                         username = href.strip('/').split('/')[0]
-            #                         
-            #                         # 排除owner和系统路径
-            #                         if username and username != owner and username not in contributors:
-            #                             if username not in ['github', 'apps', 'marketplace', 'features', 'enterprise', 
-            #                                                'pricing', 'commits', 'graphs', 'issues', 'pulls', 'actions',
-            #                                                'projects', 'security', 'insights', 'settings']:
-            #                                 if username.replace('-', '').replace('_', '').isalnum():
-            #                                     contributors.append(username)
-            #                                     logger.debug(f"添加贡献者: {username}")
-            #             
-            #             logger.info(f"✓ 通过Selenium获取到总共{len(contributors)}个贡献者")
-            #         
-            #         except Exception as e:
-            #             logger.warning(f"Selenium获取失败: {e}")
-            
-            logger.info(f"从{repo_full_name}获取{len(contributors)}个贡献者")
             return contributors
             
+        except requests.exceptions.Timeout:
+            logger.debug(f"请求超时: {repo_full_name}")
+            return []
+        except requests.exceptions.RequestException as req_err:
+            logger.debug(f"请求失败 {repo_full_name}: {req_err}")
+            return []
         except Exception as e:
-            logger.warning(f"获取贡献者失败{repo_full_name}: {e}")
+            logger.warning(f"获取贡献者失败 {repo_full_name}: {e}")
             return []
     
     def check_is_indie_developer(self, user_info: Dict, repositories: List[Dict]) -> bool:
@@ -590,53 +581,43 @@ class GitHubScraper:
         
         判断标准（针对独立开发者）：
         1. 不属于大公司（包括竞争对手）
-        2. 有一定影响力（followers >= 100 或 total_stars >= 500）
-        3. 有原创项目（至少3个非fork仓库，且至少1个有stars）
-        4. 有明确的AI相关项目经验
-        5. **核心：必须是独立开发者，不是某个大项目的成员/贡献者**
+        2. 有一定影响力（followers或stars达到配置阈值）
+        3. 有明确的AI相关项目经验
+        4. **核心：必须是独立开发者，不是某个大项目的成员/贡献者**
         """
         # 加载配置（一次性加载）
         from utils.config_loader import load_config
         config = load_config()
         github_config = config.get('github', {})
+        exclusion_rules = config.get('exclusion_rules', {})
         
         username = user_info.get('username', '')
         
-        # 1. 排除大公司员工和竞争对手
+        # 1. 排除大公司员工、竞争对手和项目团队成员（从配置读取）
         company = (user_info.get('company') or '').lower()
-        big_companies = [
-            # 科技巨头
-            'google', 'microsoft', 'meta', 'facebook', 'amazon', 'apple',
-            'alibaba', 'tencent', 'bytedance', 'baidu', 'huawei', 'openai',
-            # AI竞争对手（图像/视频生成领域）
-            'stability', 'midjourney', 'runway', 'pika', 'leonardo',
-            'replicate', 'together', 'anthropic', 'cohere',
-            # 云服务商
-            'aws', 'azure', 'gcp', 'cloudflare', 'vercel'
-        ]
+        bio = (user_info.get('bio') or '').lower()
         
-        for big_company in big_companies:
-            if big_company in company:
-                logger.info(f"❌ {username} 属于大公司/竞争对手: {company}")
+        # 从配置读取排除的组织列表（从github.exclusion_organizations读取）
+        exclusion_organizations = github_config.get('exclusion_organizations', [])
+        
+        # 转为小写列表
+        exclusion_orgs_lower = [org.lower() for org in exclusion_organizations if org]
+        
+        for org in exclusion_orgs_lower:
+            # 检查company字段
+            if org in company:
+                logger.info(f"❌ {username} 属于排除的组织: {company}")
+                return False
+            
+            # 检查bio中是否标注为该组织的成员
+            if f"{org} team" in bio or f"{org} member" in bio or f"{org} contributor" in bio:
+                logger.info(f"❌ {username} 是 {org} 组织成员")
                 return False
         
         # 2. 获取原创仓库
         original_repos = [r for r in repositories if not r.get('is_fork', False)]
         
-        # 3. 检查原创仓库数量（从配置文件读取）
-        min_repos = github_config.get('min_repos', 3)
-        
-        if len(original_repos) < min_repos:
-            logger.info(f"❌ {username} 原创仓库不足{min_repos}个: {len(original_repos)}")
-            return False
-        
-        # 4. 检查是否有自己的有影响力的项目（至少1个原创仓库有stars）
-        repos_with_stars = [r for r in original_repos if r.get('stars', 0) > 0]
-        if len(repos_with_stars) < 1:
-            logger.info(f"❌ {username} 没有有影响力的原创项目（无stars）")
-            return False
-        
-        # 5. 检查影响力（从配置文件读取阈值）
+        # 3. 检查影响力（从配置文件读取阈值）
         min_followers = github_config.get('min_followers', 100)
         min_stars = github_config.get('min_stars', 500)
         
@@ -647,29 +628,12 @@ class GitHubScraper:
             logger.info(f"❌ {username} 影响力不足: followers={followers} (需要>={min_followers}), stars={total_stars} (需要>={min_stars})")
             return False
         
-        # 6. **核心检查：排除大项目的成员/贡献者**
-        # 检查是否主要贡献集中在某个大项目（非自己的项目）
-        # 如果用户的仓库中，fork的项目stars远高于原创项目，说明是贡献者而非独立开发者
-        fork_repos = [r for r in repositories if r.get('is_fork', False)]
-        fork_stars = sum(r.get('stars', 0) for r in fork_repos)
-        
-        # 如果fork项目的stars占比超过70%，说明主要是贡献者
-        if fork_stars > 0 and total_stars > 0:
-            fork_ratio = fork_stars / (fork_stars + total_stars)
-            if fork_ratio > 0.7:
-                logger.info(f"❌ {username} 主要是贡献者而非独立开发者: fork_ratio={fork_ratio:.2f}")
-                return False
-        
-        # 7. 检查是否有知名项目的成员标识
+        # 4. 检查是否有知名项目的成员标识（从配置读取）
         # 通过bio、company字段检查是否标注为某个项目的成员
         bio = (user_info.get('bio') or '').lower()
-        known_projects = [
-            'comfyui', 'automatic1111', 'stable-diffusion-webui',
-            'langchain', 'llama', 'pytorch', 'tensorflow',
-            'huggingface', 'openai', 'anthropic'
-        ]
         
-        for project in known_projects:
+        # 使用同样的排除组织列表
+        for project in exclusion_orgs_lower:
             # 检查是否在bio或company中标注为该项目成员
             if f"{project} team" in bio or f"{project} member" in bio or f"{project} contributor" in bio:
                 logger.info(f"❌ {username} 是 {project} 项目成员")
@@ -678,7 +642,7 @@ class GitHubScraper:
                 logger.info(f"❌ {username} 在company中标注为 {project} 成员")
                 return False
         
-        # 8. 检查是否有AI相关项目（从配置文件读取关键词）
+        # 5. 检查是否有AI相关项目（从配置文件读取关键词）
         core_ai_keywords = github_config.get('core_ai_keywords', [
             # 默认关键词（如果配置文件中没有）
             'machine-learning', 'deep-learning', 'neural-network', 'ml-model',
@@ -690,10 +654,6 @@ class GitHubScraper:
             'bert', 'nlp', 'natural-language',
             'computer-vision', 'object-detection', 'image-recognition',
             'yolo', 'opencv-ai', 'face-recognition'
-        ])
-        
-        helper_keywords = github_config.get('helper_keywords', [
-            'ai-tool', 'ai-app', 'ai-api', 'ai-sdk', 'ai-saas'
         ])
         
         has_ai_project = False
@@ -709,22 +669,139 @@ class GitHubScraper:
             # 检查核心AI关键词（任意一个即可）
             matched_core = [kw for kw in core_ai_keywords if kw in repo_text]
             
-            # 检查辅助关键词（需要同时包含'ai'）
-            matched_helper = [kw for kw in helper_keywords if kw in repo_text]
-            
-            if matched_core or matched_helper:
+            if matched_core:
                 has_ai_project = True
                 ai_repo_name = repo.get('repo_name')
                 logger.info(f"✓ {username} 有AI项目: {ai_repo_name}")
-                if matched_core:
-                    logger.info(f"  匹配核心关键词: {matched_core}")
-                if matched_helper:
-                    logger.info(f"  匹配辅助关键词: {matched_helper}")
+                logger.info(f"  匹配关键词: {matched_core}")
                 break
         
         if not has_ai_project:
             logger.info(f"❌ {username} 没有明确的AI相关项目")
             return False
         
-        logger.info(f"✓ {username} 合格 - 独立开发者 - Followers:{followers}, Stars:{total_stars}, 原创仓库:{len(original_repos)}")
+        logger.info(f"✓ {username} 合格 - 独立开发者 - Followers:{followers}, Stars:{total_stars}")
         return True
+    
+    def check_is_academic(self, user_info: Dict, repositories: List[Dict]) -> tuple[bool, list, list]:
+        """
+        判断是否为学术人士
+        
+        学术人士特征：
+        1. Bio/Company包含学术机构关键词
+        2. 项目主要是研究性质（论文复现、模型训练、研究工具）
+        3. 深度学习/神经网络相关的研究项目
+        4. 满足影响力要求（followers或stars达到配置阈值）
+        
+        Args:
+            user_info: 用户信息
+            repositories: 仓库列表
+            
+        Returns:
+            (is_academic, academic_indicators, research_areas)
+            - is_academic: 是否为学术人士
+            - academic_indicators: 学术指标列表
+            - research_areas: 研究领域列表
+        """
+        from utils.config_loader import load_config
+        config = load_config()
+        github_config = config.get('github', {})
+        
+        username = user_info.get('username', '')
+        bio = (user_info.get('bio') or '').lower()
+        company = (user_info.get('company') or '').lower()
+        location = (user_info.get('location') or '').lower()
+        
+        academic_indicators = []
+        research_areas = []
+        
+        # 1. 从配置文件读取学术机构关键词
+        academic_keywords = github_config.get('academic_keywords', [
+            'university', 'college', 'institute', 'research', 'lab', 'laboratory',
+            'phd', 'ph.d', 'professor', 'postdoc', 'post-doc', 'student',
+            'academic', 'scholar', 'researcher', 'faculty',
+            '大学', '学院', '研究所', '实验室', '博士', '教授', '研究员', '学者'
+        ])
+        
+        for keyword in academic_keywords:
+            if keyword.lower() in bio or keyword.lower() in company or keyword.lower() in location:
+                academic_indicators.append(f"Profile contains: {keyword}")
+                break
+        
+        # 2. 检查项目特征
+        research_keywords = {
+            'deep-learning': ['deep-learning', 'deep learning', 'deeplearning', 'dl'],
+            'neural-network': ['neural-network', 'neural network', 'neuralnetwork', 'nn'],
+            'machine-learning': ['machine-learning', 'machine learning', 'machinelearning', 'ml'],
+            'computer-vision': ['computer-vision', 'computer vision', 'cv', 'image-processing'],
+            'nlp': ['nlp', 'natural-language', 'natural language processing', 'text-processing'],
+            'reinforcement-learning': ['reinforcement-learning', 'reinforcement learning', 'rl'],
+            'multimodal': ['multimodal', 'multi-modal', 'vision-language', 'vlm'],
+            'transformer': ['transformer', 'attention', 'bert', 'gpt'],
+            'diffusion': ['diffusion', 'stable-diffusion', 'ddpm', 'ddim'],
+            'gan': ['gan', 'generative adversarial', 'stylegan'],
+        }
+        
+        # 从配置文件读取研究项目关键词
+        research_project_indicators = github_config.get('research_project_keywords', [
+            'paper', 'arxiv', 'implementation', 'reproduction', 'reproduce',
+            'research', 'experiment', 'benchmark', 'dataset', 'pretrained',
+            'model', 'training', 'pytorch', 'tensorflow', 'keras',
+            '论文', '复现', '实验', '研究'
+        ])
+        
+        # 统计研究项目数量
+        research_project_count = 0
+        matched_areas = set()
+        
+        for repo in repositories:
+            repo_name = repo.get('repo_name', '').lower()
+            description = repo.get('description', '').lower()
+            repo_text = f"{repo_name} {description}"
+            
+            # 检查是否为研究项目
+            is_research = any(indicator.lower() in repo_text for indicator in research_project_indicators)
+            
+            if is_research:
+                research_project_count += 1
+                
+                # 识别研究领域
+                for area, keywords in research_keywords.items():
+                    if any(kw in repo_text for kw in keywords):
+                        matched_areas.add(area)
+        
+        if research_project_count > 0:
+            academic_indicators.append(f"Research projects: {research_project_count}")
+        
+        if matched_areas:
+            research_areas = list(matched_areas)
+            academic_indicators.append(f"Research areas: {', '.join(research_areas)}")
+        
+        # 3. 判断是否为学术人士
+        # 条件：有学术机构关键词 或 有2个以上研究项目
+        is_academic = len(academic_indicators) > 0 and (
+            any('Profile contains' in ind for ind in academic_indicators) or
+            research_project_count >= 2
+        )
+        
+        if not is_academic:
+            return False, [], []
+        
+        # 4. 检查影响力（从配置文件读取学术人士的阈值）
+        academic_min_followers = github_config.get('academic_min_followers', 50)
+        academic_min_stars = github_config.get('academic_min_stars', 100)
+        
+        followers = user_info.get('followers', 0)
+        original_repos = [r for r in repositories if not r.get('is_fork', False)]
+        total_stars = sum(r.get('stars', 0) for r in original_repos)
+        
+        if followers < academic_min_followers and total_stars < academic_min_stars:
+            logger.info(f"❌ {username} 学术人士影响力不足: followers={followers} (需要>={academic_min_followers}), stars={total_stars} (需要>={academic_min_stars})")
+            return False, [], []
+        
+        logger.info(f"✓ {username} 识别为学术人士")
+        logger.info(f"  学术指标: {academic_indicators}")
+        logger.info(f"  研究领域: {research_areas}")
+        logger.info(f"  影响力: Followers={followers}, Stars={total_stars}")
+        
+        return is_academic, academic_indicators, research_areas

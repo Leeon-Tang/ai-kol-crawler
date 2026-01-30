@@ -16,7 +16,8 @@ def render(
     session_state,
     crawler_status_file,
     time_module,
-    threading_module
+    threading_module,
+    academic_repository=None
 ):
     """
     渲染GitHub爬虫控制页面
@@ -32,6 +33,7 @@ def render(
         crawler_status_file: 爬虫状态文件路径
         time_module: time模块
         threading_module: threading模块
+        academic_repository: 学术人士仓库（可选）
     """
     st.markdown(f'<div class="main-header">{LABELS["crawler_title"]}</div>', unsafe_allow_html=True)
     
@@ -72,22 +74,23 @@ def render(
     st.divider()
     
     st.subheader("🔍 GitHub开发者发现")
-    st.write("使用网页爬虫（无API限制）搜索GitHub，发现独立AI开发者")
+    st.write("使用网页爬虫（无API限制）搜索GitHub，自动分类为商业开发者或学术人士")
     
-    col1, col2 = st.columns([2, 1])
+    st.info("""
+    **自动分类说明：**
+    - 💼 **商业/独立开发者** - 专注于应用开发、产品、工具
+    - 🎓 **学术人士** - 高校研究者、论文复现、模型训练
+    - 爬虫会自动识别并分别存储到不同的表
+    """)
     
-    with col1:
-        max_developers = st.slider(
-            "最大爬取开发者数量",
-            min_value=10,
-            max_value=500,
-            value=50,
-            step=10,
-            help="限制本次任务最多爬取的开发者数量"
-        )
-    
-    with col2:
-        st.empty()  # 占位，保持布局
+    max_developers = st.slider(
+        "目标商业开发者数量",
+        min_value=10,
+        max_value=500,
+        value=50,
+        step=10,
+        help="限制本次任务最多爬取的商业开发者数量（学术人士会额外识别）"
+    )
     
     st.info("💡 使用配置文件中的搜索关键词搜索项目，自动获取owner和贡献者")
     
@@ -101,16 +104,20 @@ def render(
         else:
             clear_logs_func()
             add_log_func("=" * 60, "INFO")
-            add_log_func("开始新的爬虫任务 - GitHub开发者发现", "INFO")
+            add_log_func("开始新的爬虫任务 - GitHub开发者发现（自动分类）", "INFO")
             add_log_func("=" * 60, "INFO")
             add_log_func(f"用户启动GitHub发现任务", "INFO")
-            add_log_func(f"  - 最大数量: {max_developers}", "INFO")
+            add_log_func(f"  - 目标商业开发者: {max_developers}", "INFO")
+            add_log_func(f"  - 自动识别学术人士", "INFO")
             add_log_func(f"  - 使用网页爬虫（无API限制）", "INFO")
             
             thread = threading_module.Thread(
                 target=run_crawler_task_func,
                 args=("discovery", session_state.github_repository),
-                kwargs={"max_developers": max_developers}
+                kwargs={
+                    "max_developers": max_developers,
+                    "academic_repository": academic_repository
+                }
             )
             thread.daemon = True
             thread.start()

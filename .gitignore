@@ -46,7 +46,7 @@ exports/
 backups/
 
 # 用户配置（不上传，避免覆盖用户自定义配置）
-config/config.json
+# config/config.json
 
 # 配置示例（上传到仓库，供新用户参考）
 !config/config.example.json

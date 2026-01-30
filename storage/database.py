@@ -165,7 +165,7 @@ class Database:
     
     def _init_github_tables(self):
         """初始化GitHub表"""
-        # GitHub开发者表
+        # GitHub开发者表（商业/独立开发者）
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS github_developers (
                 id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
@@ -203,6 +203,45 @@ class Database:
             )
         """)
         
+        # GitHub学术人士表
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS github_academic_developers (
+                id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+                user_id INTEGER UNIQUE NOT NULL,
+                username TEXT UNIQUE NOT NULL,
+                name TEXT,
+                profile_url TEXT,
+                avatar_url TEXT,
+                bio TEXT,
+                company TEXT,
+                location TEXT,
+                blog TEXT,
+                twitter TEXT,
+                email TEXT,
+                contact_info TEXT,
+                
+                public_repos INTEGER DEFAULT 0,
+                followers INTEGER DEFAULT 0,
+                following INTEGER DEFAULT 0,
+                
+                analyzed_repos INTEGER DEFAULT 0,
+                total_stars INTEGER DEFAULT 0,
+                total_forks INTEGER DEFAULT 0,
+                avg_stars INTEGER DEFAULT 0,
+                avg_forks INTEGER DEFAULT 0,
+                top_languages TEXT,
+                original_repos INTEGER DEFAULT 0,
+                
+                academic_indicators TEXT,
+                research_areas TEXT,
+                status TEXT DEFAULT 'pending',
+                discovered_from TEXT,
+                discovered_at TEXT DEFAULT (datetime('now', '+8 hours')),
+                last_updated TEXT DEFAULT (datetime('now', '+8 hours')),
+                notes TEXT
+            )
+        """)
+        
         # GitHub仓库表
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS github_repositories (
@@ -226,6 +265,7 @@ class Database:
         # 创建索引
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_github_developers_status ON github_developers(status)")
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_github_developers_indie ON github_developers(is_indie_developer)")
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_github_academic_status ON github_academic_developers(status)")
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_github_repos_username ON github_repositories(username)")
     
     def _init_twitter_tables(self):

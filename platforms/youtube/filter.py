@@ -20,7 +20,9 @@ class KOLFilter:
             config = json.load(f)
         
         self.threshold = config['crawler']['ai_ratio_threshold']
-        self.competitor_names = config.get('exclusion_rules', {}).get('competitor_names', [])
+        youtube_config = config.get('youtube', {})
+        youtube_exclusion = youtube_config.get('exclusion_rules', {})
+        self.competitor_names = youtube_exclusion.get('competitor_names', [])
         # 转换为小写以便不区分大小写匹配
         self.competitor_names_lower = [name.lower() for name in self.competitor_names]
     

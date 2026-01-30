@@ -22,8 +22,9 @@ class YouTubeDiscoveryTask:
     
     def _load_exclusion_channels(self) -> set:
         """加载频道黑名单"""
-        exclusion_rules = self.config.get('exclusion_rules', {})
-        exclusion_list = exclusion_rules.get('exclusion_channels', [])
+        youtube_config = self.config.get('youtube', {})
+        youtube_exclusion = youtube_config.get('exclusion_rules', {})
+        exclusion_list = youtube_exclusion.get('exclusion_channels', [])
         # 转为小写的set，方便快速查找
         exclusion_set = {channel_id.lower() for channel_id in exclusion_list if channel_id}
         if exclusion_set:

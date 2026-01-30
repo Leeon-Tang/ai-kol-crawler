@@ -113,10 +113,15 @@ def render(project_root: str, add_log_func):
     
     # 排除规则
     st.subheader(LABELS["exclusion_rules"])
+    
+    # 从youtube.exclusion_rules读取
+    youtube_config = config.get('youtube', {})
+    youtube_exclusion = youtube_config.get('exclusion_rules', {})
+    
     all_exclusion_keywords = []
-    all_exclusion_keywords.extend(config['exclusion_rules'].get('course_keywords', []))
-    all_exclusion_keywords.extend(config['exclusion_rules'].get('academic_keywords', []))
-    all_exclusion_keywords.extend(config['exclusion_rules'].get('news_keywords', []))
+    all_exclusion_keywords.extend(youtube_exclusion.get('course_keywords', []))
+    all_exclusion_keywords.extend(youtube_exclusion.get('academic_keywords', []))
+    all_exclusion_keywords.extend(youtube_exclusion.get('news_keywords', []))
     
     exclusion_keywords = st.text_area(
         "排除关键词（每行一个）", 
@@ -153,7 +158,7 @@ def render(project_root: str, add_log_func):
     
     exclusion_channels = st.text_area(
         "频道ID（每行一个）",
-        value="\n".join(config['exclusion_rules'].get('exclusion_channels', [])),
+        value="\n".join(youtube_exclusion.get('exclusion_channels', [])),
         height=200,
         help=HELP_TEXTS['exclusion_channels'],
         placeholder="例如：\nUCxxxxxxxxxxxxxx\nUCyyyyyyyyyyyyyy"
@@ -177,12 +182,19 @@ def render(project_root: str, add_log_func):
         config['keywords']['priority_low'] = [k.strip() for k in low_keywords.split('\n') if k.strip()]
         
         exclusion_list = [k.strip() for k in exclusion_keywords.split('\n') if k.strip()]
-        config['exclusion_rules']['course_keywords'] = exclusion_list
-        config['exclusion_rules']['academic_keywords'] = []
-        config['exclusion_rules']['news_keywords'] = []
+        
+        # 确保youtube配置存在
+        if 'youtube' not in config:
+            config['youtube'] = {}
+        if 'exclusion_rules' not in config['youtube']:
+            config['youtube']['exclusion_rules'] = {}
+        
+        config['youtube']['exclusion_rules']['course_keywords'] = exclusion_list
+        config['youtube']['exclusion_rules']['academic_keywords'] = []
+        config['youtube']['exclusion_rules']['news_keywords'] = []
         
         # 保存频道黑名单（转为小写）
-        config['exclusion_rules']['exclusion_channels'] = [c.strip().lower() for c in exclusion_channels.split('\n') if c.strip()]
+        config['youtube']['exclusion_rules']['exclusion_channels'] = [c.strip().lower() for c in exclusion_channels.split('\n') if c.strip()]
         
         try:
             with open(config_path, 'w', encoding='utf-8') as f:

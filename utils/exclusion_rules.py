@@ -16,8 +16,9 @@ class ExclusionRules:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         
-        # 从配置加载排除规则
-        self.rules = config.get('exclusion_rules', {})
+        # 从配置加载YouTube排除规则
+        youtube_config = config.get('youtube', {})
+        self.rules = youtube_config.get('exclusion_rules', {})
         
         # 默认规则
         self._init_default_rules()

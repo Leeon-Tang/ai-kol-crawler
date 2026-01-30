@@ -17,13 +17,13 @@ class GitHubAnalyzer:
     
     def analyze_developer(self, username: str) -> Dict:
         """
-        分析GitHub开发者
+        分析GitHub开发者，并自动分类为商业/学术
         
         Args:
             username: 用户名
             
         Returns:
-            分析结果
+            分析结果，包含developer_type字段（'commercial'或'academic'）
         """
         logger.info(f"开始分析开发者: {username}")
         
@@ -36,7 +36,97 @@ class GitHubAnalyzer:
         # 获取用户仓库
         repositories = self.scraper.get_user_repositories(username, max_repos=30)
         
-        # 判断是否为独立开发者
+        # 先检查是否为学术人士
+        is_academic, academic_indicators, research_areas = self.scraper.check_is_academic(user_info, repositories)
+        
+        # 如果是学术人士，返回学术类型
+        if is_academic:
+            # 计算统计数据
+            stats = self._calculate_stats(repositories)
+            
+            # 提取联系方式
+            contact_info = self._extract_contact_info(user_info)
+            
+            # 学术人士也需要有联系方式
+            if not contact_info:
+                logger.info(f"学术人士 {username} 没有任何联系方式，标记为不合格")
+                result = {
+                    'username': username,
+                    'user_id': user_info['user_id'],
+                    'name': user_info.get('name', ''),
+                    'profile_url': user_info['profile_url'],
+                    'avatar_url': user_info.get('avatar_url', ''),
+                    'bio': user_info.get('bio', ''),
+                    'company': user_info.get('company', ''),
+                    'location': user_info.get('location', ''),
+                    'blog': user_info.get('blog', ''),
+                    'twitter': user_info.get('twitter', ''),
+                    'email': user_info.get('email', ''),
+                    'contact_info': contact_info,
+                    
+                    'public_repos': user_info.get('public_repos', 0),
+                    'followers': user_info.get('followers', 0),
+                    'following': user_info.get('following', 0),
+                    
+                    'analyzed_repos': len(repositories),
+                    'total_stars': stats['total_stars'],
+                    'total_forks': stats['total_forks'],
+                    'avg_stars': stats['avg_stars'],
+                    'avg_forks': stats['avg_forks'],
+                    'top_languages': stats['top_languages'],
+                    'original_repos': stats['original_repos'],
+                    
+                    'developer_type': 'academic',
+                    'academic_indicators': academic_indicators,
+                    'research_areas': research_areas,
+                    'status': 'rejected',
+                    
+                    'created_at': user_info.get('created_at'),
+                    'updated_at': user_info.get('updated_at')
+                }
+                
+                logger.info(f"开发者 {username} 分析完成: 学术人士但无联系方式")
+                return result
+            
+            result = {
+                'username': username,
+                'user_id': user_info['user_id'],
+                'name': user_info.get('name', ''),
+                'profile_url': user_info['profile_url'],
+                'avatar_url': user_info.get('avatar_url', ''),
+                'bio': user_info.get('bio', ''),
+                'company': user_info.get('company', ''),
+                'location': user_info.get('location', ''),
+                'blog': user_info.get('blog', ''),
+                'twitter': user_info.get('twitter', ''),
+                'email': user_info.get('email', ''),
+                'contact_info': contact_info,
+                
+                'public_repos': user_info.get('public_repos', 0),
+                'followers': user_info.get('followers', 0),
+                'following': user_info.get('following', 0),
+                
+                'analyzed_repos': len(repositories),
+                'total_stars': stats['total_stars'],
+                'total_forks': stats['total_forks'],
+                'avg_stars': stats['avg_stars'],
+                'avg_forks': stats['avg_forks'],
+                'top_languages': stats['top_languages'],
+                'original_repos': stats['original_repos'],
+                
+                'developer_type': 'academic',
+                'academic_indicators': academic_indicators,
+                'research_areas': research_areas,
+                'status': 'qualified',
+                
+                'created_at': user_info.get('created_at'),
+                'updated_at': user_info.get('updated_at')
+            }
+            
+            logger.info(f"开发者 {username} 分析完成: 学术人士")
+            return result
+        
+        # 如果不是学术人士，检查是否为商业/独立开发者
         is_indie = self.scraper.check_is_indie_developer(user_info, repositories)
         
         # 计算统计数据
@@ -76,6 +166,7 @@ class GitHubAnalyzer:
             'top_languages': stats['top_languages'],
             'original_repos': stats['original_repos'],
             
+            'developer_type': 'commercial',
             'is_indie_developer': is_indie,
             'status': 'qualified' if is_indie else 'rejected',
             
@@ -83,7 +174,7 @@ class GitHubAnalyzer:
             'updated_at': user_info.get('updated_at')
         }
         
-        logger.info(f"开发者 {username} 分析完成: {'合格' if is_indie else '不合格'}")
+        logger.info(f"开发者 {username} 分析完成: {'合格商业开发者' if is_indie else '不合格'}")
         return result
     
     def _calculate_stats(self, repositories: List[Dict]) -> Dict:
