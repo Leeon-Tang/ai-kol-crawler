@@ -17,6 +17,11 @@ webdriver-manager>=4.0.0
 pytest>=7.0.0
 pytest-cov>=4.0.0
 
+# MCP Server 依赖（可选 - 用于 AI 调试前端）
+# 如需使用 MCP Server，请取消下面两行注释
+# mcp>=0.9.0
+# playwright>=1.40.0
+
 # 可选依赖 - PostgreSQL支持(默认使用SQLite,无需此包)
 # 如需使用PostgreSQL,请取消下行注释并安装
 # psycopg2-binary>=2.9.9
