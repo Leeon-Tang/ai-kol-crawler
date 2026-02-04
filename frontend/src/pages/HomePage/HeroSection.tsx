@@ -11,9 +11,10 @@ interface HeroSectionProps {
   status?: any
   youtubeStats?: any
   githubStats?: any
+  githubAcademicStats?: any
 }
 
-const HeroSection = memo(({ isActive, status, youtubeStats, githubStats }: HeroSectionProps) => {
+const HeroSection = memo(({ isActive, status, youtubeStats, githubStats, githubAcademicStats }: HeroSectionProps) => {
   const navigate = useNavigate()
   
   const totalData = (youtubeStats?.total_kols || 0) + (githubStats?.total_developers || 0)
@@ -42,9 +43,6 @@ const HeroSection = memo(({ isActive, status, youtubeStats, githubStats }: HeroS
           <h1 className="hero-main-title">
             多平台智能爬虫系统
           </h1>
-          <p className="hero-desc">
-            自动发现、智能分析、实时追踪全球优质内容创作者
-          </p>
         </motion.div>
 
         {/* 核心数据展示 */}
@@ -180,7 +178,7 @@ const HeroSection = memo(({ isActive, status, youtubeStats, githubStats }: HeroS
               <div className="platform-icon github-icon">
                 <GithubOutlined />
               </div>
-              <div className="platform-title">GitHub</div>
+              <div className="platform-title">GitHub 独立开发者</div>
             </div>
             <div className="platform-stats">
               <div className="platform-stat">
@@ -204,6 +202,46 @@ const HeroSection = memo(({ isActive, status, youtubeStats, githubStats }: HeroS
                 onClick={(e) => {
                   e.stopPropagation()
                   navigate('/github/data')
+                }}
+              >
+                查看数据 →
+              </Button>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            className="platform-card-modern github-academic-card-modern"
+            whileHover={{ scale: 1.02, y: -5 }}
+            onClick={() => navigate('/github/academic')}
+          >
+            <div className="platform-header">
+              <div className="platform-icon github-academic-icon">
+                <GithubOutlined />
+              </div>
+              <div className="platform-title">GitHub 学术</div>
+            </div>
+            <div className="platform-stats">
+              <div className="platform-stat">
+                <div className="platform-stat-value">
+                  {githubAcademicStats?.total_academic_developers?.toLocaleString() || 0}
+                </div>
+                <div className="platform-stat-label">总学者</div>
+              </div>
+              <div className="platform-divider"></div>
+              <div className="platform-stat">
+                <div className="platform-stat-value">
+                  {githubAcademicStats?.qualified_academic_developers?.toLocaleString() || 0}
+                </div>
+                <div className="platform-stat-label">合格</div>
+              </div>
+            </div>
+            <div className="platform-footer">
+              <Button 
+                type="text" 
+                className="platform-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigate('/github/academic')
                 }}
               >
                 查看数据 →
@@ -243,27 +281,6 @@ const HeroSection = memo(({ isActive, status, youtubeStats, githubStats }: HeroS
           >
             GitHub 数据
           </Button>
-        </motion.div>
-
-        {/* 系统状态 */}
-        <motion.div 
-          className="hero-status-modern"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-        >
-          <div className={`status-indicator ${status?.crawler_running ? 'status-running' : 'status-idle'}`}>
-            <motion.div 
-              className="status-dot"
-              animate={{
-                scale: status?.crawler_running ? [1, 1.2, 1] : 1,
-              }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-            <span className="status-text">
-              {status?.crawler_running ? '系统运行中' : '系统空闲'}
-            </span>
-          </div>
         </motion.div>
       </div>
     </div>

@@ -6,15 +6,17 @@ interface HomePageProps {
   status?: any
   youtubeStats?: any
   githubStats?: any
+  githubAcademicStats?: any
 }
 
-const HomePage = ({ isActive, status, youtubeStats, githubStats }: HomePageProps) => {
+const HomePage = ({ isActive, status, youtubeStats, githubStats, githubAcademicStats }: HomePageProps) => {
   return (
     <HeroSection
       isActive={isActive}
       status={status}
       youtubeStats={youtubeStats}
       githubStats={githubStats}
+      githubAcademicStats={githubAcademicStats}
     />
   )
 }

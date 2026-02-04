@@ -55,6 +55,7 @@ const Home = () => {
             status={status}
             youtubeStats={youtubeStats}
             githubStats={githubStats}
+            githubAcademicStats={githubAcademicStats}
           />
         )
       case '/youtube/crawler':
@@ -74,6 +75,7 @@ const Home = () => {
             status={status}
             youtubeStats={youtubeStats}
             githubStats={githubStats}
+            githubAcademicStats={githubAcademicStats}
           />
         )
     }

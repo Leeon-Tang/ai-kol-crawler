@@ -211,7 +211,7 @@
 /* 平台卡片网格 */
 .platform-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   margin-bottom: 48px;
 }
@@ -245,6 +245,10 @@
   background: linear-gradient(90deg, #0366d6 0%, #0969da 100%);
 }
 
+.github-academic-card-modern::before {
+  background: linear-gradient(90deg, #1890ff 0%, #40a9ff 100%);
+}
+
 .platform-card-modern:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
@@ -276,6 +280,11 @@
 .github-icon {
   background: linear-gradient(135deg, rgba(3, 102, 214, 0.15) 0%, rgba(9, 105, 218, 0.15) 100%);
   color: #0366d6;
+}
+
+.github-academic-icon {
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(64, 169, 255, 0.15) 100%);
+  color: #1890ff;
 }
 
 .platform-title {
@@ -471,6 +480,28 @@
     align-items: stretch;
   }
 
+  .action-btn {
+    width: 100%;
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .platform-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .platform-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .hero-actions-modern {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
   .action-btn {
     width: 100%;
   }
