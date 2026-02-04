@@ -1,0 +1,200 @@
+/* 全局主题变量 */
+
+/* 暗色主题 */
+[data-theme='dark'] {
+  /* 背景色 */
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #1a1a24;
+  --bg-tertiary: #252532;
+  --bg-elevated: #2d2d3d;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 255, 255, 0.08);
+  
+  /* 边框色 */
+  --border-primary: rgba(255, 255, 255, 0.08);
+  --border-secondary: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.18);
+  
+  /* 文字色 */
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.75);
+  --text-tertiary: rgba(255, 255, 255, 0.55);
+  --text-disabled: rgba(255, 255, 255, 0.35);
+  
+  /* 品牌色 */
+  --color-primary: #ff4444;
+  --color-primary-hover: #ff6b6b;
+  --color-primary-active: #ff2222;
+  --color-primary-bg: rgba(255, 68, 68, 0.15);
+  --color-primary-border: rgba(255, 68, 68, 0.35);
+  
+  /* 功能色 */
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #ff4d4f;
+  --color-info: #1890ff;
+  
+  /* 阴影 */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  
+  /* 输入框 */
+  --input-bg: rgba(255, 255, 255, 0.06);
+  --input-border: rgba(255, 255, 255, 0.15);
+  --input-hover-border: rgba(255, 255, 255, 0.25);
+  --input-focus-border: var(--color-primary);
+  
+  /* 滑块 */
+  --slider-rail: rgba(255, 255, 255, 0.12);
+  --slider-track: linear-gradient(90deg, #ff4444 0%, #ff6b6b 100%);
+  
+  /* 滚动条 */
+  --scrollbar-track: rgba(255, 255, 255, 0.04);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  
+  /* YouTube标签颜色 - 暗色主题 */
+  --tag-high-bg: rgba(255, 68, 68, 0.18);
+  --tag-high-border: rgba(255, 68, 68, 0.4);
+  --tag-high-text: #ff6b6b;
+  
+  --tag-medium-bg: rgba(250, 173, 20, 0.18);
+  --tag-medium-border: rgba(250, 173, 20, 0.4);
+  --tag-medium-text: #ffc53d;
+  
+  --tag-low-bg: rgba(24, 144, 255, 0.18);
+  --tag-low-border: rgba(24, 144, 255, 0.4);
+  --tag-low-text: #40a9ff;
+  
+  --tag-exclude-bg: rgba(255, 77, 79, 0.18);
+  --tag-exclude-border: rgba(255, 77, 79, 0.4);
+  --tag-exclude-text: #ff7875;
+  
+  /* GitHub标签颜色 - 暗色主题（蓝色系） */
+  --github-tag-high-bg: rgba(24, 144, 255, 0.35);
+  --github-tag-high-border: rgba(64, 169, 255, 0.6);
+  --github-tag-high-text: #91d5ff;
+  
+  --github-tag-medium-bg: rgba(64, 169, 255, 0.30);
+  --github-tag-medium-border: rgba(105, 192, 255, 0.6);
+  --github-tag-medium-text: #bae7ff;
+  
+  --github-tag-low-bg: rgba(105, 192, 255, 0.25);
+  --github-tag-low-border: rgba(145, 213, 255, 0.6);
+  --github-tag-low-text: #d6f4ff;
+  
+  --github-tag-exclude-bg: rgba(140, 140, 140, 0.30);
+  --github-tag-exclude-border: rgba(191, 191, 191, 0.6);
+  --github-tag-exclude-text: #d9d9d9;
+  
+  /* GitHub品牌色 */
+  --github-primary: #1890ff;
+  --github-primary-hover: #40a9ff;
+  --github-primary-light: #69c0ff;
+  --github-secondary: #096dd9;
+  --github-dark: #0050b3;
+}
+
+/* 亮色主题 */
+[data-theme='light'] {
+  /* 背景色 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f7;
+  --bg-tertiary: #ebebef;
+  --bg-elevated: #ffffff;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-active: rgba(0, 0, 0, 0.08);
+  
+  /* 边框色 */
+  --border-primary: rgba(0, 0, 0, 0.08);
+  --border-secondary: rgba(0, 0, 0, 0.12);
+  --border-hover: rgba(0, 0, 0, 0.18);
+  
+  /* 文字色 */
+  --text-primary: rgba(0, 0, 0, 0.88);
+  --text-secondary: rgba(0, 0, 0, 0.65);
+  --text-tertiary: rgba(0, 0, 0, 0.45);
+  --text-disabled: rgba(0, 0, 0, 0.25);
+  
+  /* 品牌色 */
+  --color-primary: #ff4444;
+  --color-primary-hover: #ff6b6b;
+  --color-primary-active: #ff2222;
+  --color-primary-bg: rgba(255, 68, 68, 0.1);
+  --color-primary-border: rgba(255, 68, 68, 0.3);
+  
+  /* 功能色 */
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #ff4d4f;
+  --color-info: #1890ff;
+  
+  /* 阴影 */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+  
+  /* 输入框 */
+  --input-bg: #ffffff;
+  --input-border: rgba(0, 0, 0, 0.15);
+  --input-hover-border: rgba(0, 0, 0, 0.25);
+  --input-focus-border: var(--color-primary);
+  
+  /* 滑块 */
+  --slider-rail: rgba(0, 0, 0, 0.12);
+  --slider-track: linear-gradient(90deg, #ff4444 0%, #ff6b6b 100%);
+  
+  /* 滚动条 */
+  --scrollbar-track: rgba(0, 0, 0, 0.04);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  
+  /* YouTube标签颜色 - 亮色主题 */
+  --tag-high-bg: rgba(255, 68, 68, 0.12);
+  --tag-high-border: rgba(255, 68, 68, 0.35);
+  --tag-high-text: #d32f2f;
+  
+  --tag-medium-bg: rgba(250, 173, 20, 0.12);
+  --tag-medium-border: rgba(250, 173, 20, 0.35);
+  --tag-medium-text: #d68910;
+  
+  --tag-low-bg: rgba(24, 144, 255, 0.12);
+  --tag-low-border: rgba(24, 144, 255, 0.35);
+  --tag-low-text: #0d6efd;
+  
+  --tag-exclude-bg: rgba(255, 77, 79, 0.12);
+  --tag-exclude-border: rgba(255, 77, 79, 0.35);
+  --tag-exclude-text: #d32f2f;
+  
+  /* GitHub标签颜色 - 亮色主题（蓝色系） */
+  --github-tag-high-bg: rgba(24, 144, 255, 0.20);
+  --github-tag-high-border: rgba(24, 144, 255, 0.5);
+  --github-tag-high-text: #0050b3;
+  
+  --github-tag-medium-bg: rgba(64, 169, 255, 0.18);
+  --github-tag-medium-border: rgba(64, 169, 255, 0.5);
+  --github-tag-medium-text: #096dd9;
+  
+  --github-tag-low-bg: rgba(105, 192, 255, 0.15);
+  --github-tag-low-border: rgba(105, 192, 255, 0.5);
+  --github-tag-low-text: #1890ff;
+  
+  --github-tag-exclude-bg: rgba(140, 140, 140, 0.18);
+  --github-tag-exclude-border: rgba(140, 140, 140, 0.45);
+  --github-tag-exclude-text: #595959;
+  
+  /* GitHub品牌色 */
+  --github-primary: #1890ff;
+  --github-primary-hover: #40a9ff;
+  --github-primary-light: #69c0ff;
+  --github-secondary: #096dd9;
+  --github-dark: #0050b3;
+}
+
+/* 全局应用 */
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
+}

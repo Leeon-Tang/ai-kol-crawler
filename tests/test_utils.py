@@ -167,27 +167,3 @@ def test_exclusion_rules(project_root):
     # 测试is_news_channel方法
     result = rules.is_news_channel("AI新闻频道")
     assert isinstance(result, bool)
-
-def test_session_manager(test_db_path):
-    """测试会话管理器"""
-    from utils.session_manager import init_session_state
-    
-    # 创建模拟的session_state
-    class MockSessionState:
-        def __init__(self):
-            self.data = {}
-        
-        def __setattr__(self, name, value):
-            if name == 'data':
-                super().__setattr__(name, value)
-            else:
-                self.data[name] = value
-        
-        def __getattr__(self, name):
-            if name == 'data':
-                return super().__getattribute__(name)
-            return self.data.get(name)
-    
-    # 注意：实际测试需要Streamlit环境
-    # 这里只测试函数是否可以导入
-    assert init_session_state is not None

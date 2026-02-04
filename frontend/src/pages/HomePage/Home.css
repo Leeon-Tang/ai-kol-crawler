@@ -1,0 +1,51 @@
+.home-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+/* Hero Section */
+.hero-section {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Platform Sections - 使用主题变量 */
+.youtube-section {
+  background: var(--bg-primary);
+}
+
+.github-section {
+  background: var(--bg-primary);
+}
+
+.twitter-section {
+  background: var(--bg-primary);
+}
+
+.data-section {
+  background: var(--bg-primary);
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .home-container {
+    min-height: 100vh;
+  }
+  
+  .hero-section {
+    min-height: 100vh;
+  }
+}
+
+/* 低性能设备优化 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

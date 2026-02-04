@@ -32,6 +32,7 @@ python-portable/
 # IDE
 .vscode/
 .idea/
+.kiro/
 *.swp
 *.swo
 
@@ -52,3 +53,19 @@ config/config.json
 
 # 配置示例（上传到仓库，供新用户参考）
 !config/config.example.json
+
+# Node.js
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/package-lock.json
+frontend/yarn.lock
+frontend/pnpm-lock.yaml
+

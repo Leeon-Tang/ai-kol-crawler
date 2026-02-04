@@ -83,41 +83,6 @@ def test_twitter_discovery_task_import():
         pytest.fail(f"Twitter发现任务导入失败: {e}")
 
 
-def test_github_ui_modules_import():
-    """测试GitHub UI模块能否导入"""
-    try:
-        from ui.github import crawler, data_browser, rules, texts
-        assert crawler is not None
-        assert data_browser is not None
-        assert rules is not None
-        assert texts is not None
-    except Exception as e:
-        pytest.fail(f"GitHub UI模块导入失败: {e}")
-
-
-def test_twitter_ui_modules_import():
-    """测试Twitter UI模块能否导入"""
-    try:
-        from ui.twitter import crawler, data_browser, texts
-        assert crawler is not None
-        assert data_browser is not None
-        assert texts is not None
-    except Exception as e:
-        pytest.fail(f"Twitter UI模块导入失败: {e}")
-
-
-def test_common_ui_modules_import():
-    """测试通用UI模块能否导入"""
-    try:
-        from ui.common import dashboard, data_browser, logs, settings
-        assert dashboard is not None
-        assert data_browser is not None
-        assert logs is not None
-        assert settings is not None
-    except Exception as e:
-        pytest.fail(f"通用UI模块导入失败: {e}")
-
-
 def test_github_platform_import():
     """测试GitHub平台模块能否导入"""
     try:

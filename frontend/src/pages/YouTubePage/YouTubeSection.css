@@ -1,0 +1,904 @@
+/* YouTube 爬虫控制 V2 - 使用主题变量 */
+.youtube-control-v2 {
+  width: 100%;
+  max-width: 1600px;
+  height: calc(100vh - 80px);
+  margin: 80px auto 0;
+  padding: 10px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  transform: translateZ(0);
+  will-change: opacity;
+  color: var(--text-primary);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 美化滚动条 */
+.youtube-control-v2::-webkit-scrollbar {
+  width: 6px;
+}
+
+.youtube-control-v2::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.youtube-control-v2::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.youtube-control-v2::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 顶部操作栏 */
+.top-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  transform: translateZ(0);
+}
+
+.bar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.platform-tag {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tag-high-text) !important;
+  padding: 6px 14px;
+  background: var(--tag-high-bg);
+  border: 1px solid var(--tag-high-border);
+  border-radius: 8px;
+}
+
+.status-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-primary);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.status-chip.active {
+  background: rgba(82, 196, 26, 0.1);
+  border-color: rgba(82, 196, 26, 0.3);
+  color: var(--color-success);
+}
+
+.chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-disabled);
+}
+
+.status-chip.active .chip-dot {
+  background: var(--color-success);
+  animation: pulse-animation 2s ease-in-out infinite;
+}
+
+@keyframes pulse-animation {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+.bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.save-button {
+  height: 36px;
+  padding: 0 18px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transform: translateZ(0);
+}
+
+.save-button:hover {
+  background: var(--bg-active);
+  border-color: var(--border-secondary);
+  color: var(--text-primary);
+  transform: translateZ(0);
+}
+
+.main-action-btn {
+  height: 44px !important;
+  padding: 0 28px !important;
+  border-radius: 10px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border: none !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+  transform: translateZ(0);
+}
+
+.main-action-btn.start {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%) !important;
+  box-shadow: 0 4px 12px rgba(255, 68, 68, 0.3) !important;
+}
+
+.main-action-btn.start:hover {
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 6px 20px rgba(255, 68, 68, 0.4) !important;
+}
+
+.main-action-btn.stop {
+  background: linear-gradient(135deg, var(--color-error) 0%, #ff7875 100%) !important;
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3) !important;
+}
+
+/* 配置布局 */
+.config-layout {
+  display: grid;
+  grid-template-columns: 680px 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* 左侧参数区域 */
+.params-section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 右侧关键词区域 */
+.keywords-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.config-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 16px;
+  transform: translateZ(0);
+  display: flex;
+  flex-direction: column;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.section-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.param-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  padding: 2px 8px;
+  background: var(--bg-hover);
+  border-radius: 6px;
+}
+
+/* 参数网格 */
+.params-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* 爬虫统计卡片 - 现代化设计 */
+.crawler-stats-modern {
+  margin-top: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.stats-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stats-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-success);
+  padding: 3px 8px;
+  background: rgba(82, 196, 26, 0.15);
+  border: 1px solid rgba(82, 196, 26, 0.3);
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.stats-grid-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.stat-card-modern {
+  position: relative;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 14px 16px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  cursor: default;
+  flex: 1;
+  min-height: 0;
+}
+
+.stat-card-modern:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-secondary);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card-bg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  opacity: 0.1;
+  filter: blur(30px);
+  transition: all 0.3s ease;
+}
+
+.stat-card-modern.primary .stat-card-bg {
+  background: linear-gradient(135deg, #ff4444 0%, #ff6b6b 100%);
+}
+
+.stat-card-modern.success .stat-card-bg {
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+}
+
+.stat-card-modern.info .stat-card-bg {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+}
+
+.stat-card-modern.time .stat-card-bg {
+  background: linear-gradient(135deg, #faad14 0%, #ffc53d 100%);
+}
+
+.stat-card-modern:hover .stat-card-bg {
+  opacity: 0.15;
+  transform: scale(1.2);
+}
+
+.stat-card-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.stat-label-modern {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-label-modern.red {
+  color: #ff6b6b;
+}
+
+.stat-label-modern.green {
+  color: #52c41a;
+}
+
+.stat-label-modern.blue {
+  color: #40a9ff;
+}
+
+.stat-label-modern.yellow {
+  color: #ffc53d;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.stat-number.red {
+  color: #ff6b6b;
+}
+
+.stat-number.green {
+  color: #52c41a;
+}
+
+.stat-number.blue {
+  color: #40a9ff;
+}
+
+.stat-number.yellow {
+  color: #ffc53d;
+}
+
+.stat-number-small {
+  font-size: 32px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.stat-number-small.yellow {
+  color: #ffc53d;
+}
+
+.param-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transform: translateZ(0);
+  will-change: transform, background, border-color;
+}
+
+.param-card:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-secondary);
+  transform: translateZ(0);
+}
+
+.param-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.param-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.param-current {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: var(--color-primary) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.param-slider-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  min-width: 36px;
+  text-align: center;
+}
+
+.param-slider-wrapper .ant-slider {
+  flex: 1;
+  margin: 0;
+}
+
+/* Slider 样式 */
+.youtube-control-v2 .ant-slider-rail {
+  background: var(--slider-rail);
+  height: 4px;
+}
+
+.youtube-control-v2 .ant-slider-track {
+  background: var(--slider-track);
+  height: 4px;
+  will-change: width;
+}
+
+.youtube-control-v2 .ant-slider-handle::after {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(255, 68, 68, 0.3);
+  border: none;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transform: translateZ(0);
+}
+
+.youtube-control-v2 .ant-slider-handle:hover::after,
+.youtube-control-v2 .ant-slider-handle:focus::after {
+  box-shadow: 0 3px 10px rgba(255, 68, 68, 0.4);
+  transform: scale(1.1) translateZ(0);
+}
+
+.youtube-control-v2 .ant-slider-disabled .ant-slider-rail {
+  background: var(--bg-hover) !important;
+}
+
+.youtube-control-v2 .ant-slider-disabled .ant-slider-track {
+  background: var(--text-disabled) !important;
+}
+
+/* 关键词区域 */
+.keywords-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  contain: layout style paint;
+}
+
+.youtube-control-v2 .keyword-group {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  padding: 10px;
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+
+.youtube-control-v2 .keyword-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.youtube-control-v2 .priority-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.youtube-control-v2 .keyword-group-header.high .priority-badge {
+  background: var(--tag-high-bg) !important;
+  color: var(--tag-high-text) !important;
+  border: 1px solid var(--tag-high-border) !important;
+}
+
+.youtube-control-v2 .keyword-group-header.medium .priority-badge {
+  background: var(--tag-medium-bg) !important;
+  color: var(--tag-medium-text) !important;
+  border: 1px solid var(--tag-medium-border) !important;
+}
+
+.youtube-control-v2 .keyword-group-header.low .priority-badge {
+  background: var(--tag-low-bg) !important;
+  color: var(--tag-low-text) !important;
+  border: 1px solid var(--tag-low-border) !important;
+}
+
+.youtube-control-v2 .keyword-group-header.exclude .priority-badge {
+  background: var(--tag-exclude-bg) !important;
+  color: var(--tag-exclude-text) !important;
+  border: 1px solid var(--tag-exclude-border) !important;
+}
+
+.youtube-control-v2 .keyword-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.youtube-control-v2 .keyword-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.youtube-control-v2 .keyword-tag {
+  margin: 0 !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
+}
+
+/* 确保Ant Design Tag组件的颜色被覆盖 - 和左侧标签标题颜色一致 */
+.youtube-control-v2 .keyword-tag.high,
+.youtube-control-v2 .keyword-tag.high.ant-tag {
+  background: var(--tag-high-bg) !important;
+  border-color: var(--tag-high-border) !important;
+  color: var(--tag-high-text) !important;
+}
+
+.youtube-control-v2 .keyword-tag.medium,
+.youtube-control-v2 .keyword-tag.medium.ant-tag {
+  background: var(--tag-medium-bg) !important;
+  border-color: var(--tag-medium-border) !important;
+  color: var(--tag-medium-text) !important;
+}
+
+.youtube-control-v2 .keyword-tag.low,
+.youtube-control-v2 .keyword-tag.low.ant-tag {
+  background: var(--tag-low-bg) !important;
+  border-color: var(--tag-low-border) !important;
+  color: var(--tag-low-text) !important;
+}
+
+.youtube-control-v2 .keyword-tag.exclude,
+.youtube-control-v2 .keyword-tag.exclude.ant-tag {
+  background: var(--tag-exclude-bg) !important;
+  border-color: var(--tag-exclude-border) !important;
+  color: var(--tag-exclude-text) !important;
+}
+
+.youtube-control-v2 .keyword-tag:hover {
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.youtube-control-v2 .keyword-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.youtube-control-v2 .keyword-input {
+  flex: 1;
+  height: 32px !important;
+  background: var(--input-bg) !important;
+  border: 1px solid var(--input-border) !important;
+  border-radius: 6px !important;
+  color: var(--text-primary) !important;
+  font-size: 13px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.youtube-control-v2 .keyword-input:hover {
+  border-color: var(--input-hover-border) !important;
+}
+
+.youtube-control-v2 .keyword-input:focus {
+  border-color: var(--input-focus-border) !important;
+  box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.15) !important;
+}
+
+.youtube-control-v2 .keyword-input::placeholder {
+  color: var(--text-disabled) !important;
+}
+
+.youtube-control-v2 .add-keyword-btn {
+  height: 32px !important;
+  padding: 0 14px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease !important;
+  transform: translateZ(0);
+  box-shadow: none !important;
+  text-shadow: none !important;
+  outline: none !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.high,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn-primary {
+  background: var(--tag-high-bg) !important;
+  border: 1px solid var(--tag-high-border) !important;
+  color: var(--tag-high-text) !important;
+  box-shadow: none !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.high *,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn *,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn-primary * {
+  color: var(--tag-high-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.high:hover,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn:hover,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn-primary:hover,
+.youtube-control-v2 .add-keyword-btn.high:focus,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn:focus,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn-primary:focus,
+.youtube-control-v2 .add-keyword-btn.high:active,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn:active,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn-primary:active {
+  background: var(--tag-high-border) !important;
+  border-color: var(--tag-high-border) !important;
+  color: var(--tag-high-text) !important;
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.high:hover *,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn:hover *,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn-primary:hover *,
+.youtube-control-v2 .add-keyword-btn.high:focus *,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn:focus *,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn-primary:focus *,
+.youtube-control-v2 .add-keyword-btn.high:active *,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn:active *,
+.youtube-control-v2 .add-keyword-btn.high.ant-btn-primary:active * {
+  color: var(--tag-high-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.medium,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn-primary {
+  background: var(--tag-medium-bg) !important;
+  border: 1px solid var(--tag-medium-border) !important;
+  color: var(--tag-medium-text) !important;
+  box-shadow: none !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.medium *,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn *,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn-primary * {
+  color: var(--tag-medium-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.medium:hover,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn:hover,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn-primary:hover,
+.youtube-control-v2 .add-keyword-btn.medium:focus,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn:focus,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn-primary:focus,
+.youtube-control-v2 .add-keyword-btn.medium:active,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn:active,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn-primary:active {
+  background: var(--tag-medium-border) !important;
+  border-color: var(--tag-medium-border) !important;
+  color: var(--tag-medium-text) !important;
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.medium:hover *,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn:hover *,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn-primary:hover *,
+.youtube-control-v2 .add-keyword-btn.medium:focus *,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn:focus *,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn-primary:focus *,
+.youtube-control-v2 .add-keyword-btn.medium:active *,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn:active *,
+.youtube-control-v2 .add-keyword-btn.medium.ant-btn-primary:active * {
+  color: var(--tag-medium-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.low,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn-primary {
+  background: var(--tag-low-bg) !important;
+  border: 1px solid var(--tag-low-border) !important;
+  color: var(--tag-low-text) !important;
+  box-shadow: none !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.low *,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn *,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn-primary * {
+  color: var(--tag-low-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.low:hover,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn:hover,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn-primary:hover,
+.youtube-control-v2 .add-keyword-btn.low:focus,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn:focus,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn-primary:focus,
+.youtube-control-v2 .add-keyword-btn.low:active,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn:active,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn-primary:active {
+  background: var(--tag-low-border) !important;
+  border-color: var(--tag-low-border) !important;
+  color: var(--tag-low-text) !important;
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.low:hover *,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn:hover *,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn-primary:hover *,
+.youtube-control-v2 .add-keyword-btn.low:focus *,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn:focus *,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn-primary:focus *,
+.youtube-control-v2 .add-keyword-btn.low:active *,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn:active *,
+.youtube-control-v2 .add-keyword-btn.low.ant-btn-primary:active * {
+  color: var(--tag-low-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.exclude,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn-primary {
+  background: var(--tag-exclude-bg) !important;
+  border: 1px solid var(--tag-exclude-border) !important;
+  color: var(--tag-exclude-text) !important;
+  box-shadow: none !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.exclude *,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn *,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn-primary * {
+  color: var(--tag-exclude-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.exclude:hover,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn:hover,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn-primary:hover,
+.youtube-control-v2 .add-keyword-btn.exclude:focus,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn:focus,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn-primary:focus,
+.youtube-control-v2 .add-keyword-btn.exclude:active,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn:active,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn-primary:active {
+  background: var(--tag-exclude-border) !important;
+  border-color: var(--tag-exclude-border) !important;
+  color: var(--tag-exclude-text) !important;
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.youtube-control-v2 .add-keyword-btn.exclude:hover *,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn:hover *,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn-primary:hover *,
+.youtube-control-v2 .add-keyword-btn.exclude:focus *,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn:focus *,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn-primary:focus *,
+.youtube-control-v2 .add-keyword-btn.exclude:active *,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn:active *,
+.youtube-control-v2 .add-keyword-btn.exclude.ant-btn-primary:active * {
+  color: var(--tag-exclude-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* 滚动条样式 */
+.keywords-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.keywords-section::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 3px;
+}
+
+.keywords-section::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+  will-change: background;
+  transition: background 0.15s ease;
+}
+
+.keywords-section::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* 优化滚动性能 */
+.keywords-section {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* 响应式 */
+@media (max-width: 1600px) {
+  .youtube-control-v2 .config-layout {
+    grid-template-columns: 600px 1fr;
+  }
+}
+
+@media (max-width: 1500px) {
+  .youtube-control-v2 .config-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .youtube-control-v2 .keywords-section {
+    max-height: none;
+    overflow-y: visible;
+  }
+  
+  .youtube-control-v2 .params-section {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .youtube-control-v2 {
+    padding: 12px;
+  }
+
+  .youtube-control-v2 .top-action-bar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .youtube-control-v2 .bar-left,
+  .youtube-control-v2 .bar-right {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .youtube-control-v2 .params-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .youtube-control-v2 .main-action-btn {
+    width: 100%;
+  }
+  
+  .youtube-control-v2 .platform-tag {
+    font-size: 14px;
+    padding: 5px 12px;
+  }
+}
+

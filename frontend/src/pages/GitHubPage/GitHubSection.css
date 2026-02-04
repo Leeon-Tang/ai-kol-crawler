@@ -1,0 +1,926 @@
+/* GitHub 爬虫控制 V2 - 独特的蓝色科技风格 */
+.github-control-v2 {
+  width: 100%;
+  max-width: 1600px;
+  height: calc(100vh - 80px);
+  margin: 80px auto 0;
+  padding: 10px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  transform: translateZ(0);
+  will-change: opacity;
+  color: var(--text-primary);
+  contain: layout style paint;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 美化滚动条 */
+.github-control-v2::-webkit-scrollbar {
+  width: 6px;
+}
+
+.github-control-v2::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.github-control-v2::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.github-control-v2::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 顶部操作栏 */
+.github-control-v2 .top-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  transform: translateZ(0);
+}
+
+.github-control-v2 .bar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.github-control-v2 .platform-tag {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff !important;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, var(--github-primary) 0%, var(--github-primary-hover) 100%);
+  border: 1px solid var(--github-primary-light);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.25);
+}
+
+.github-control-v2 .status-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-primary);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.github-control-v2 .status-chip.active {
+  background: rgba(82, 196, 26, 0.1);
+  border-color: rgba(82, 196, 26, 0.3);
+  color: var(--color-success);
+}
+
+.github-control-v2 .chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-disabled);
+}
+
+.github-control-v2 .status-chip.active .chip-dot {
+  background: var(--color-success);
+  animation: pulse-animation-github 2s ease-in-out infinite;
+}
+
+@keyframes pulse-animation-github {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+.github-control-v2 .bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.github-control-v2 .save-button {
+  height: 36px;
+  padding: 0 18px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transform: translateZ(0);
+}
+
+.github-control-v2 .save-button:hover {
+  background: var(--bg-active);
+  border-color: var(--border-secondary);
+  color: var(--text-primary);
+  transform: translateZ(0);
+}
+
+.github-control-v2 .main-action-btn {
+  height: 44px !important;
+  padding: 0 28px !important;
+  border-radius: 10px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border: none !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+  transform: translateZ(0);
+}
+
+.github-control-v2 .main-action-btn.start {
+  background: linear-gradient(135deg, var(--github-primary) 0%, var(--github-primary-hover) 100%) !important;
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.4) !important;
+}
+
+.github-control-v2 .main-action-btn.start:hover {
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 6px 24px rgba(24, 144, 255, 0.5) !important;
+  background: linear-gradient(135deg, var(--github-secondary) 0%, var(--github-primary) 100%) !important;
+}
+
+.github-control-v2 .main-action-btn.stop {
+  background: linear-gradient(135deg, var(--color-error) 0%, #ff7875 100%) !important;
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3) !important;
+}
+
+/* 配置布局 */
+.github-control-v2 .config-layout {
+  display: grid;
+  grid-template-columns: 680px 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.github-control-v2 .params-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.github-control-v2 .keywords-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.github-control-v2 .config-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 16px;
+  transform: translateZ(0);
+  display: flex;
+  flex-direction: column;
+}
+
+.github-control-v2 .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.github-control-v2 .section-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.github-control-v2 .param-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  padding: 2px 8px;
+  background: var(--bg-hover);
+  border-radius: 6px;
+}
+
+/* 参数网格 */
+.github-control-v2 .params-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.github-control-v2 .params-grid.single-col {
+  grid-template-columns: 1fr;
+}
+
+.github-control-v2 .param-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transform: translateZ(0);
+  will-change: transform, background, border-color;
+}
+
+.github-control-v2 .param-card:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-secondary);
+  transform: translateZ(0);
+}
+
+.github-control-v2 .param-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.github-control-v2 .param-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.github-control-v2 .param-current {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: var(--github-primary-hover) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.github-control-v2 .param-slider-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.github-control-v2 .range-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  min-width: 36px;
+  text-align: center;
+}
+
+.github-control-v2 .param-slider-wrapper .ant-slider {
+  flex: 1;
+  margin: 0;
+}
+
+/* Slider 样式 - GitHub蓝色主题 */
+.github-control-v2 .ant-slider-rail {
+  background: var(--slider-rail);
+  height: 4px;
+}
+
+.github-control-v2 .ant-slider-track {
+  background: linear-gradient(90deg, var(--github-primary) 0%, var(--github-primary-hover) 100%);
+  height: 4px;
+  will-change: width;
+}
+
+.github-control-v2 .ant-slider-handle::after {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(24, 144, 255, 0.3);
+  border: none;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transform: translateZ(0);
+}
+
+.github-control-v2 .ant-slider-handle:hover::after,
+.github-control-v2 .ant-slider-handle:focus::after {
+  box-shadow: 0 3px 10px rgba(24, 144, 255, 0.4);
+  transform: scale(1.1) translateZ(0);
+}
+
+.github-control-v2 .ant-slider-disabled .ant-slider-rail {
+  background: var(--bg-hover) !important;
+}
+
+.github-control-v2 .ant-slider-disabled .ant-slider-track {
+  background: var(--text-disabled) !important;
+}
+
+/* 关键词区域 */
+.github-control-v2 .keywords-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  contain: layout style paint;
+}
+
+.github-control-v2 .keyword-group {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  padding: 10px;
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+
+.github-control-v2 .keyword-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.github-control-v2 .priority-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+/* GitHub专属：所有关键词组标题使用GitHub变量 */
+.github-control-v2 .keyword-group-header.search .priority-badge {
+  background: var(--github-tag-high-bg) !important;
+  color: var(--github-tag-high-text) !important;
+  border: 1px solid var(--github-tag-high-border) !important;
+}
+
+.github-control-v2 .keyword-group-header.core .priority-badge {
+  background: var(--github-tag-medium-bg) !important;
+  color: var(--github-tag-medium-text) !important;
+  border: 1px solid var(--github-tag-medium-border) !important;
+}
+
+.github-control-v2 .keyword-group-header.academic .priority-badge {
+  background: var(--github-tag-low-bg) !important;
+  color: var(--github-tag-low-text) !important;
+  border: 1px solid var(--github-tag-low-border) !important;
+}
+
+.github-control-v2 .keyword-group-header.research .priority-badge,
+.github-control-v2 .keyword-group-header.exclusion .priority-badge {
+  background: var(--github-tag-exclude-bg) !important;
+  color: var(--github-tag-exclude-text) !important;
+  border: 1px solid var(--github-tag-exclude-border) !important;
+}
+
+.github-control-v2 .keyword-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.github-control-v2 .keyword-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+  contain: layout style;
+}
+
+.github-control-v2 .keyword-tag {
+  margin: 0 !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
+}
+
+/* GitHub专属：关键词标签使用GitHub变量 */
+.github-control-v2 .keyword-tag.search,
+.github-control-v2 .keyword-tag.search.ant-tag {
+  background: var(--github-tag-high-bg) !important;
+  border-color: var(--github-tag-high-border) !important;
+  color: var(--github-tag-high-text) !important;
+}
+
+.github-control-v2 .keyword-tag.core,
+.github-control-v2 .keyword-tag.core.ant-tag {
+  background: var(--github-tag-medium-bg) !important;
+  border-color: var(--github-tag-medium-border) !important;
+  color: var(--github-tag-medium-text) !important;
+}
+
+.github-control-v2 .keyword-tag.academic,
+.github-control-v2 .keyword-tag.academic.ant-tag {
+  background: var(--github-tag-low-bg) !important;
+  border-color: var(--github-tag-low-border) !important;
+  color: var(--github-tag-low-text) !important;
+}
+
+.github-control-v2 .keyword-tag.research,
+.github-control-v2 .keyword-tag.research.ant-tag,
+.github-control-v2 .keyword-tag.exclusion,
+.github-control-v2 .keyword-tag.exclusion.ant-tag {
+  background: var(--github-tag-exclude-bg) !important;
+  border-color: var(--github-tag-exclude-border) !important;
+  color: var(--github-tag-exclude-text) !important;
+}
+
+.github-control-v2 .keyword-tag:hover {
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.github-control-v2 .keyword-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.github-control-v2 .keyword-input {
+  flex: 1;
+  height: 32px !important;
+  background: var(--input-bg) !important;
+  border: 1px solid var(--input-border) !important;
+  border-radius: 6px !important;
+  color: var(--text-primary) !important;
+  font-size: 13px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.github-control-v2 .keyword-input:hover {
+  border-color: var(--input-hover-border) !important;
+}
+
+.github-control-v2 .keyword-input:focus {
+  border-color: var(--input-focus-border) !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15) !important;
+}
+
+.github-control-v2 .keyword-input::placeholder {
+  color: var(--text-disabled) !important;
+}
+
+.github-control-v2 .add-keyword-btn {
+  height: 32px !important;
+  padding: 0 14px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease !important;
+  transform: translateZ(0);
+  box-shadow: none !important;
+  text-shadow: none !important;
+  outline: none !important;
+}
+
+/* GitHub专属：添加按钮使用GitHub变量 - search */
+.github-control-v2 .add-keyword-btn.search,
+.github-control-v2 .add-keyword-btn.search.ant-btn,
+.github-control-v2 .add-keyword-btn.search.ant-btn-primary {
+  background: var(--github-tag-high-bg) !important;
+  border: 1px solid var(--github-tag-high-border) !important;
+  color: var(--github-tag-high-text) !important;
+  box-shadow: none !important;
+}
+
+.github-control-v2 .add-keyword-btn.search *,
+.github-control-v2 .add-keyword-btn.search.ant-btn *,
+.github-control-v2 .add-keyword-btn.search.ant-btn-primary * {
+  color: var(--github-tag-high-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.github-control-v2 .add-keyword-btn.search:hover,
+.github-control-v2 .add-keyword-btn.search.ant-btn:hover,
+.github-control-v2 .add-keyword-btn.search.ant-btn-primary:hover,
+.github-control-v2 .add-keyword-btn.search:focus,
+.github-control-v2 .add-keyword-btn.search.ant-btn:focus,
+.github-control-v2 .add-keyword-btn.search.ant-btn-primary:focus,
+.github-control-v2 .add-keyword-btn.search:active,
+.github-control-v2 .add-keyword-btn.search.ant-btn:active,
+.github-control-v2 .add-keyword-btn.search.ant-btn-primary:active {
+  background: var(--github-tag-high-border) !important;
+  border-color: var(--github-tag-high-border) !important;
+  color: var(--github-tag-high-text) !important;
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.github-control-v2 .add-keyword-btn.search:hover *,
+.github-control-v2 .add-keyword-btn.search.ant-btn:hover *,
+.github-control-v2 .add-keyword-btn.search.ant-btn-primary:hover *,
+.github-control-v2 .add-keyword-btn.search:focus *,
+.github-control-v2 .add-keyword-btn.search.ant-btn:focus *,
+.github-control-v2 .add-keyword-btn.search.ant-btn-primary:focus *,
+.github-control-v2 .add-keyword-btn.search:active *,
+.github-control-v2 .add-keyword-btn.search.ant-btn:active *,
+.github-control-v2 .add-keyword-btn.search.ant-btn-primary:active * {
+  color: var(--github-tag-high-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* GitHub专属：添加按钮使用GitHub变量 - core */
+.github-control-v2 .add-keyword-btn.core,
+.github-control-v2 .add-keyword-btn.core.ant-btn,
+.github-control-v2 .add-keyword-btn.core.ant-btn-primary {
+  background: var(--github-tag-medium-bg) !important;
+  border: 1px solid var(--github-tag-medium-border) !important;
+  color: var(--github-tag-medium-text) !important;
+  box-shadow: none !important;
+}
+
+.github-control-v2 .add-keyword-btn.core *,
+.github-control-v2 .add-keyword-btn.core.ant-btn *,
+.github-control-v2 .add-keyword-btn.core.ant-btn-primary * {
+  color: var(--github-tag-medium-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.github-control-v2 .add-keyword-btn.core:hover,
+.github-control-v2 .add-keyword-btn.core.ant-btn:hover,
+.github-control-v2 .add-keyword-btn.core.ant-btn-primary:hover,
+.github-control-v2 .add-keyword-btn.core:focus,
+.github-control-v2 .add-keyword-btn.core.ant-btn:focus,
+.github-control-v2 .add-keyword-btn.core.ant-btn-primary:focus,
+.github-control-v2 .add-keyword-btn.core:active,
+.github-control-v2 .add-keyword-btn.core.ant-btn:active,
+.github-control-v2 .add-keyword-btn.core.ant-btn-primary:active {
+  background: var(--github-tag-medium-border) !important;
+  border-color: var(--github-tag-medium-border) !important;
+  color: var(--github-tag-medium-text) !important;
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.github-control-v2 .add-keyword-btn.core:hover *,
+.github-control-v2 .add-keyword-btn.core.ant-btn:hover *,
+.github-control-v2 .add-keyword-btn.core.ant-btn-primary:hover *,
+.github-control-v2 .add-keyword-btn.core:focus *,
+.github-control-v2 .add-keyword-btn.core.ant-btn:focus *,
+.github-control-v2 .add-keyword-btn.core.ant-btn-primary:focus *,
+.github-control-v2 .add-keyword-btn.core:active *,
+.github-control-v2 .add-keyword-btn.core.ant-btn:active *,
+.github-control-v2 .add-keyword-btn.core.ant-btn-primary:active * {
+  color: var(--github-tag-medium-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* GitHub专属：添加按钮使用GitHub变量 - academic */
+.github-control-v2 .add-keyword-btn.academic,
+.github-control-v2 .add-keyword-btn.academic.ant-btn,
+.github-control-v2 .add-keyword-btn.academic.ant-btn-primary {
+  background: var(--github-tag-low-bg) !important;
+  border: 1px solid var(--github-tag-low-border) !important;
+  color: var(--github-tag-low-text) !important;
+  box-shadow: none !important;
+}
+
+.github-control-v2 .add-keyword-btn.academic *,
+.github-control-v2 .add-keyword-btn.academic.ant-btn *,
+.github-control-v2 .add-keyword-btn.academic.ant-btn-primary * {
+  color: var(--github-tag-low-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.github-control-v2 .add-keyword-btn.academic:hover,
+.github-control-v2 .add-keyword-btn.academic.ant-btn:hover,
+.github-control-v2 .add-keyword-btn.academic.ant-btn-primary:hover,
+.github-control-v2 .add-keyword-btn.academic:focus,
+.github-control-v2 .add-keyword-btn.academic.ant-btn:focus,
+.github-control-v2 .add-keyword-btn.academic.ant-btn-primary:focus,
+.github-control-v2 .add-keyword-btn.academic:active,
+.github-control-v2 .add-keyword-btn.academic.ant-btn:active,
+.github-control-v2 .add-keyword-btn.academic.ant-btn-primary:active {
+  background: var(--github-tag-low-border) !important;
+  border-color: var(--github-tag-low-border) !important;
+  color: var(--github-tag-low-text) !important;
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.github-control-v2 .add-keyword-btn.academic:hover *,
+.github-control-v2 .add-keyword-btn.academic.ant-btn:hover *,
+.github-control-v2 .add-keyword-btn.academic.ant-btn-primary:hover *,
+.github-control-v2 .add-keyword-btn.academic:focus *,
+.github-control-v2 .add-keyword-btn.academic.ant-btn:focus *,
+.github-control-v2 .add-keyword-btn.academic.ant-btn-primary:focus *,
+.github-control-v2 .add-keyword-btn.academic:active *,
+.github-control-v2 .add-keyword-btn.academic.ant-btn:active *,
+.github-control-v2 .add-keyword-btn.academic.ant-btn-primary:active * {
+  color: var(--github-tag-low-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* GitHub专属：添加按钮使用GitHub变量 - research & exclusion */
+.github-control-v2 .add-keyword-btn.research,
+.github-control-v2 .add-keyword-btn.research.ant-btn,
+.github-control-v2 .add-keyword-btn.research.ant-btn-primary,
+.github-control-v2 .add-keyword-btn.exclusion,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn-primary {
+  background: var(--github-tag-exclude-bg) !important;
+  border: 1px solid var(--github-tag-exclude-border) !important;
+  color: var(--github-tag-exclude-text) !important;
+  box-shadow: none !important;
+}
+
+.github-control-v2 .add-keyword-btn.research *,
+.github-control-v2 .add-keyword-btn.research.ant-btn *,
+.github-control-v2 .add-keyword-btn.research.ant-btn-primary *,
+.github-control-v2 .add-keyword-btn.exclusion *,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn *,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn-primary * {
+  color: var(--github-tag-exclude-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.github-control-v2 .add-keyword-btn.research:hover,
+.github-control-v2 .add-keyword-btn.research.ant-btn:hover,
+.github-control-v2 .add-keyword-btn.research.ant-btn-primary:hover,
+.github-control-v2 .add-keyword-btn.research:focus,
+.github-control-v2 .add-keyword-btn.research.ant-btn:focus,
+.github-control-v2 .add-keyword-btn.research.ant-btn-primary:focus,
+.github-control-v2 .add-keyword-btn.research:active,
+.github-control-v2 .add-keyword-btn.research.ant-btn:active,
+.github-control-v2 .add-keyword-btn.research.ant-btn-primary:active,
+.github-control-v2 .add-keyword-btn.exclusion:hover,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn:hover,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn-primary:hover,
+.github-control-v2 .add-keyword-btn.exclusion:focus,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn:focus,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn-primary:focus,
+.github-control-v2 .add-keyword-btn.exclusion:active,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn:active,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn-primary:active {
+  background: var(--github-tag-exclude-border) !important;
+  border-color: var(--github-tag-exclude-border) !important;
+  color: var(--github-tag-exclude-text) !important;
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.github-control-v2 .add-keyword-btn.research:hover *,
+.github-control-v2 .add-keyword-btn.research.ant-btn:hover *,
+.github-control-v2 .add-keyword-btn.research.ant-btn-primary:hover *,
+.github-control-v2 .add-keyword-btn.research:focus *,
+.github-control-v2 .add-keyword-btn.research.ant-btn:focus *,
+.github-control-v2 .add-keyword-btn.research.ant-btn-primary:focus *,
+.github-control-v2 .add-keyword-btn.research:active *,
+.github-control-v2 .add-keyword-btn.research.ant-btn:active *,
+.github-control-v2 .add-keyword-btn.research.ant-btn-primary:active *,
+.github-control-v2 .add-keyword-btn.exclusion:hover *,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn:hover *,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn-primary:hover *,
+.github-control-v2 .add-keyword-btn.exclusion:focus *,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn:focus *,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn-primary:focus *,
+.github-control-v2 .add-keyword-btn.exclusion:active *,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn:active *,
+.github-control-v2 .add-keyword-btn.exclusion.ant-btn-primary:active * {
+  color: var(--github-tag-exclude-text) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* 爬虫统计卡片 - 蓝色主题 */
+.github-control-v2 .crawler-stats-modern {
+  margin-top: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.github-control-v2 .stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.github-control-v2 .stats-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.github-control-v2 .stats-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-success);
+  padding: 3px 8px;
+  background: rgba(82, 196, 26, 0.15);
+  border: 1px solid rgba(82, 196, 26, 0.3);
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: pulse-badge-github 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge-github {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.github-control-v2 .stats-grid-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.github-control-v2 .stat-card-modern {
+  position: relative;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 14px 16px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  cursor: default;
+  flex: 1;
+  min-height: 0;
+}
+
+.github-control-v2 .stat-card-modern:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-secondary);
+  box-shadow: var(--shadow-md);
+}
+
+.github-control-v2 .stat-card-bg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  opacity: 0.1;
+  filter: blur(30px);
+  transition: all 0.3s ease;
+}
+
+/* GitHub专属：统计卡片使用蓝色系 */
+.github-control-v2 .stat-card-modern.primary .stat-card-bg {
+  background: linear-gradient(135deg, var(--github-primary) 0%, var(--github-primary-hover) 100%);
+}
+
+.github-control-v2 .stat-card-modern.success .stat-card-bg {
+  background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
+}
+
+.github-control-v2 .stat-card-modern.time .stat-card-bg {
+  background: linear-gradient(135deg, #722ed1 0%, #9254de 100%);
+}
+
+.github-control-v2 .stat-card-modern:hover .stat-card-bg {
+  opacity: 0.15;
+  transform: scale(1.2);
+}
+
+.github-control-v2 .stat-card-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.github-control-v2 .stat-label-modern {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* GitHub专属：统计标签颜色 */
+.github-control-v2 .stat-label-modern.blue {
+  color: var(--github-primary-hover);
+}
+
+.github-control-v2 .stat-label-modern.green {
+  color: #36cfc9;
+}
+
+.github-control-v2 .stat-label-modern.yellow {
+  color: #9254de;
+}
+
+.github-control-v2 .stat-number {
+  font-size: 32px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.github-control-v2 .stat-number.blue {
+  color: #40a9ff;
+}
+
+.github-control-v2 .stat-number.green {
+  color: #52c41a;
+}
+
+.github-control-v2 .stat-number-small {
+  font-size: 32px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.github-control-v2 .stat-number-small.yellow {
+  color: #ffc53d;
+}
+
+/* 滚动条样式 */
+.github-control-v2 .keywords-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.github-control-v2 .keywords-section::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 3px;
+}
+
+.github-control-v2 .keywords-section::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+  will-change: background;
+  transition: background 0.15s ease;
+}
+
+.github-control-v2 .keywords-section::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+.github-control-v2 .keywords-section {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* 响应式 */
+@media (max-width: 1600px) {
+  .github-control-v2 .config-layout {
+    grid-template-columns: 600px 1fr;
+  }
+}
+
+@media (max-width: 1500px) {
+  .github-control-v2 .config-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .github-control-v2 .keywords-section {
+    max-height: none;
+    overflow-y: visible;
+  }
+  
+  .github-control-v2 .params-section {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .github-control-v2 {
+    padding: 12px;
+  }
+
+  .github-control-v2 .top-action-bar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .github-control-v2 .bar-left,
+  .github-control-v2 .bar-right {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .github-control-v2 .params-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .github-control-v2 .main-action-btn {
+    width: 100%;
+  }
+  
+  .github-control-v2 .platform-tag {
+    font-size: 14px;
+    padding: 5px 12px;
+  }
+}

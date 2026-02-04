@@ -10,7 +10,7 @@ cd /d "%~dp0.."
 echo.
 echo ========================================
 echo   AI KOL爬虫系统 - 自动启动
-echo   无需安装Python
+echo   React + FastAPI 架构
 echo ========================================
 echo.
 
@@ -24,7 +24,7 @@ set VENV_PYTHON=%VENV_DIR%\Scripts\python.exe
 REM ============================================
 REM Step 1: Check or download portable Python
 REM ============================================
-echo [Step 1/5] Checking Python environment...
+echo [Step 1/6] Checking Python environment...
 echo.
 
 if exist "%PYTHON_EXE%" (
@@ -101,7 +101,7 @@ echo.
 REM ============================================
 REM Step 2: Create virtual environment
 REM ============================================
-echo [Step 2/5] Configuring virtual environment...
+echo [Step 2/6] Configuring virtual environment...
 echo.
 
 if exist "%VENV_PYTHON%" (
@@ -125,9 +125,9 @@ echo.
 :skip_venv_create
 
 REM ============================================
-REM Step 3: Install dependencies
+REM Step 3: Install Python dependencies
 REM ============================================
-echo [Step 3/5] Installing dependencies...
+echo [Step 3/6] Installing Python dependencies...
 echo.
 echo This may take a few minutes...
 echo.
@@ -137,7 +137,7 @@ echo.
 if errorlevel 1 (
     echo [WARNING] Some dependencies may have failed to install
 ) else (
-    echo [OK] All dependencies installed
+    echo [OK] All Python dependencies installed
 )
 echo.
 
@@ -151,6 +151,7 @@ if not exist "data" mkdir data
 if not exist "logs" mkdir logs
 if not exist "exports" mkdir exports
 if not exist "config" mkdir config
+if not exist "backups" mkdir backups
 
 REM 检查并创建配置文件
 if not exist "config\config.json" (
@@ -169,7 +170,7 @@ if not exist "config\config.json" (
 
 REM 检查并执行数据库迁移
 echo [INFO] Checking database migration...
-"%VENV_PYTHON%" -c "from storage.migrations.migration_v2 import migrate; migrate()"
+"%VENV_PYTHON%" -c "import sys; sys.path.insert(0, 'backend'); from storage.migrations.migration_v2 import migrate; migrate()"
 if errorlevel 1 (
     echo [WARNING] Database migration check failed, but system will continue
 ) else (
@@ -178,7 +179,7 @@ if errorlevel 1 (
 
 REM 检查并执行时区迁移
 echo [INFO] Checking timezone migration...
-"%VENV_PYTHON%" -c "from storage.migrations.migration_timezone import check_and_migrate_if_needed; check_and_migrate_if_needed(silent=False)"
+"%VENV_PYTHON%" -c "import sys; sys.path.insert(0, 'backend'); from storage.migrations.migration_timezone import check_and_migrate_if_needed; check_and_migrate_if_needed(silent=False)"
 if errorlevel 1 (
     echo [WARNING] Timezone migration check failed, but system will continue
 ) else (
@@ -192,7 +193,7 @@ echo.
 REM ============================================
 REM Step 5: Start the application
 REM ============================================
-echo [Step 5/5] Starting Web Interface...
+echo [Step 5/5] Starting application...
 echo.
 
 REM Find available port
@@ -214,7 +215,7 @@ if %PORT% gtr 8510 (
     echo [ERROR] No available port found (8501-8510)
     echo.
     echo Possible solutions:
-    echo 1. Close other Streamlit applications
+    echo 1. Close other applications using these ports
     echo 2. Restart computer
     echo 3. Wait a few minutes and try again
     echo.
@@ -233,26 +234,54 @@ if %PORT_FOUND% equ 0 (
 
 echo ========================================
 echo   System Ready!
-echo   Starting Web Interface...
+echo   Starting Development Servers...
 echo ========================================
 echo.
-echo Browser will open: http://localhost:%PORT%
+echo   Frontend: http://localhost:3000
+echo   Backend API: http://localhost:%PORT%
+echo   API Docs: http://localhost:%PORT%/docs
 echo.
-echo Do NOT close this window!
+echo   Starting backend server...
 echo.
 
-REM Start Streamlit
-"%VENV_PYTHON%" -m streamlit run app.py --server.port %PORT% --server.headless false
+REM Start backend in a visible window (not minimized)
+start "Backend API - Port %PORT%" "%VENV_PYTHON%" -m uvicorn backend.api:app --host 0.0.0.0 --port %PORT% --reload --no-use-colors
 
-if errorlevel 1 (
-    echo.
-    echo [ERROR] Startup failed!
-    echo.
-    echo Possible solutions:
-    echo 1. Close applications using ports 8501-8510
-    echo 2. Restart computer
-    echo 3. Delete python-portable and venv folders and try again
-    echo 4. Contact technical support
-    echo.
-    pause
+REM Wait for backend to start
+timeout /t 3 /nobreak >nul
+
+REM Check if frontend dependencies are installed
+if not exist "frontend\node_modules\" (
+    echo Installing frontend dependencies...
+    cd frontend
+    call npm install
+    if errorlevel 1 (
+        echo [ERROR] Frontend dependencies installation failed!
+        cd ..
+        pause
+        exit /b 1
+    )
+    cd ..
 )
+
+echo.
+echo   Starting frontend server...
+echo.
+
+REM Wait a bit more to ensure backend is ready
+timeout /t 2 /nobreak >nul
+
+REM Open browser automatically
+echo   Opening browser...
+start http://localhost:3000
+
+REM Start frontend (this will keep the window open)
+cd frontend
+call npm run dev
+
+REM If frontend exits, cleanup
+cd ..
+echo.
+echo [INFO] Frontend server stopped
+echo.
+pause
