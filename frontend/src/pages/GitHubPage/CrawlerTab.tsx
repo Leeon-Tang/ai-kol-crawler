@@ -3,7 +3,6 @@ import { PlayCircleOutlined, PauseCircleOutlined, SaveOutlined, PlusOutlined } f
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiService } from '@/services/api'
 import { memo, useCallback, useState, useEffect, useMemo, useRef } from 'react'
-import PerformanceMonitor from '@/components/common/PerformanceMonitor'
 import OptimizedSlider from '@/components/common/OptimizedSlider'
 import VirtualKeywordList from '@/components/common/VirtualKeywordList'
 import './GitHubSection.css'
@@ -87,7 +86,9 @@ const GitHubCrawlerSection = memo(({ isActive, status }: GitHubCrawlerSectionPro
       try {
         const savedConfig = localStorage.getItem('github_crawler_config')
         if (savedConfig) {
-          setConfig(JSON.parse(savedConfig))
+          const parsed = JSON.parse(savedConfig)
+          // 合并默认配置，确保所有字段都存在
+          setConfig({ ...defaultConfig.current, ...parsed })
         }
       } catch (e) {
         console.error('Failed to load config:', e)
@@ -270,7 +271,6 @@ const GitHubCrawlerSection = memo(({ isActive, status }: GitHubCrawlerSectionPro
               <span className="chip-dot"></span>
               {isRunning ? 'Running' : 'Ready'}
             </div>
-            <PerformanceMonitor />
           </div>
           <div className="bar-right">
             <Button
@@ -643,7 +643,12 @@ const ParamCard = memo(({
   formatter?: (val: number) => string
 }) => {
   const safeValue = isNaN(value) || !isFinite(value) ? min : value
-  const displayValue = formatter ? formatter(safeValue) : `${safeValue}${suffix}`
+  // 修复：确保displayValue正确显示当前值
+  const displayValue = formatter 
+    ? formatter(safeValue) 
+    : suffix 
+      ? `${Math.round(safeValue)}${suffix}` 
+      : `${Math.round(safeValue)}`
   
   return (
     <div className="param-card">

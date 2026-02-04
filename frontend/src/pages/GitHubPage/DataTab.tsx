@@ -193,6 +193,7 @@ const GitHubDataSection = memo(({ isActive, stats }: GitHubDataSectionProps) => 
       dataIndex: 'email',
       key: 'contact',
       width: 200,
+      align: 'center' as const,
       render: renderContact,
     },
     {

@@ -118,6 +118,30 @@ const AcademicDataTab = memo(({ isActive, stats }: AcademicDataTabProps) => {
     </div>
   ), [])
 
+  // 渲染研究领域
+  const renderResearchAreas = useCallback((_text: string, record: any) => {
+    try {
+      const areas = record.research_areas ? JSON.parse(record.research_areas) : []
+      if (!areas || areas.length === 0) {
+        return <span className="simple-number">-</span>
+      }
+      return (
+        <div className="research-areas-cell">
+          {areas.slice(0, 3).map((area: string, index: number) => (
+            <Tag key={index} color="blue" className="research-tag">
+              {area}
+            </Tag>
+          ))}
+          {areas.length > 3 && (
+            <Tag color="default" className="research-tag">+{areas.length - 3}</Tag>
+          )}
+        </div>
+      )
+    } catch (e) {
+      return <span className="simple-number">-</span>
+    }
+  }, [])
+
   // 渲染状态
   const renderStatus = useCallback((status: string) => {
     const statusConfig: Record<string, { icon: React.ReactNode; text: string; color: string }> = {
@@ -194,7 +218,16 @@ const AcademicDataTab = memo(({ isActive, stats }: AcademicDataTabProps) => {
       dataIndex: 'email',
       key: 'contact',
       width: 200,
+      align: 'center' as const,
       render: renderContact,
+    },
+    {
+      title: '研究领域',
+      dataIndex: 'research_areas',
+      key: 'research_areas',
+      width: 200,
+      align: 'center' as const,
+      render: renderResearchAreas,
     },
     {
       title: '位置',
@@ -229,7 +262,7 @@ const AcademicDataTab = memo(({ isActive, stats }: AcademicDataTabProps) => {
       },
       render: renderDateTime,
     },
-  ], [renderUser, renderMetric, renderContact, renderStatus, renderDateTime])
+  ], [renderUser, renderMetric, renderContact, renderResearchAreas, renderStatus, renderDateTime])
 
   return (
     <div className="data-tab-container">
